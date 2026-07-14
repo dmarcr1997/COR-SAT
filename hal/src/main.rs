@@ -3,12 +3,14 @@ use axum::{
     Router,
 };
 
+mod health;
 mod camera;
 mod system;
 
 #[tokio::main]
 async fn main() {
     let app = Router::new()
+	.route("/v1/system/health", get(health::check_health))
         .route("/v1/system/status", get(system::get_status))
         .route("/v1/camera/capture", post(camera::capture_image));
 
