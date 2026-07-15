@@ -1,0 +1,6 @@
+{
+	"hal_base_url": "http://127.0.0.1:3000",
+	"capture_interval_seconds": 30,
+	"request_timeout_seconds": 10,
+	"maximum_captures": 20
+}

@@ -11,7 +11,7 @@ pub struct CaptureResponse {
 
 pub async fn capture_image() -> Result<impl IntoResponse, StatusCode> {
    let timestamp = Local::now().format("%Y-%m-%d %H-%M-%S").to_string();
-   let output_filename = format!("{}.jpg", timestamp);
+   let output_filename = format!("./caps/{}.jpg", timestamp);
    let tuning_path = "/usr/share/libcamera/ipa/rpi/pisp/imx219_noir.json";
 
    let output = Command::new("rpicam-still")
