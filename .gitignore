@@ -84,3 +84,5 @@ htmlcov/
 *.swo
 .DS_Store
 
+# KiCAD
+.history
