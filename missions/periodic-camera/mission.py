@@ -10,7 +10,7 @@ from typing import Any
 from sat_sdk import SatClient
 
 
-CONFIG_PATH = Path(__file__).with_name("config.json")
+CONFIG_PATH = Path(__file__).with_name("manifest.json")
 
 logging.basicConfig(
     level=logging.INFO,
@@ -29,7 +29,7 @@ def handle_shutdown(signum: int, frame: Any) -> None:
 
 def load_config() -> dict[str, Any]:
     with CONFIG_PATH.open("r", encoding="utf-8") as config_file:
-        config = json.load(config_file)
+        config = json.load(config_file)["configuration"]
 
     interval = config.get("capture_interval_seconds")
     if not isinstance(interval, (int, float)) or interval <= 0:
