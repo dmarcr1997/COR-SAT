@@ -4,6 +4,7 @@ import json
 import logging
 import signal
 import time
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -15,6 +16,9 @@ CONFIG_PATH = Path(__file__).with_name("manifest.json")
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+    ]
 )
 
 logger = logging.getLogger("periodic-camera")
