@@ -29,3 +29,73 @@ ModuleNotFoundError: No module named 'sat_sdk'
 2026-07-16 17:01:37,976 INFO periodic-camera: Captured image ./caps/2026-07-16 17-01-37.jpg: Image saved
 2026-07-16 17:01:46,797 INFO periodic-camera: Shutdown requested by signal 15
 2026-07-16 17:01:46,979 INFO periodic-camera: Periodic camera mission stopped
+2026-07-17 12:56:51,702 INFO periodic-camera: Starting periodic camera mission
+2026-07-17 12:56:53,161 INFO periodic-camera: Captured image ./caps/2026-07-17 12-56-51.jpg: Image saved
+2026-07-17 12:57:24,204 INFO periodic-camera: Captured image ./caps/2026-07-17 12-57-23.jpg: Image saved
+2026-07-17 12:57:43,944 INFO periodic-camera: Shutdown requested by signal 15
+2026-07-17 12:57:43,965 INFO periodic-camera: Periodic camera mission stopped
+2026-07-17 13:04:48,280 INFO periodic-camera: Starting periodic camera mission
+2026-07-17 13:04:49,758 INFO periodic-camera: Captured image ./caps/2026-07-17 13-04-48.jpg: Image saved
+2026-07-17 13:05:20,789 INFO periodic-camera: Captured image ./caps/2026-07-17 13-05-19.jpg: Image saved
+2026-07-17 13:05:51,821 INFO periodic-camera: Captured image ./caps/2026-07-17 13-05-50.jpg: Image saved
+2026-07-17 13:06:22,896 INFO periodic-camera: Captured image ./caps/2026-07-17 13-06-21.jpg: Image saved
+2026-07-17 13:06:53,935 INFO periodic-camera: Captured image ./caps/2026-07-17 13-06-52.jpg: Image saved
+2026-07-17 13:07:24,962 INFO periodic-camera: Captured image ./caps/2026-07-17 13-07-23.jpg: Image saved
+2026-07-17 13:07:55,976 INFO periodic-camera: Captured image ./caps/2026-07-17 13-07-54.jpg: Image saved
+2026-07-17 13:08:26,990 INFO periodic-camera: Captured image ./caps/2026-07-17 13-08-25.jpg: Image saved
+2026-07-17 13:08:58,007 INFO periodic-camera: Captured image ./caps/2026-07-17 13-08-57.jpg: Image saved
+2026-07-17 13:09:29,057 INFO periodic-camera: Captured image ./caps/2026-07-17 13-09-28.jpg: Image saved
+2026-07-17 13:09:29,057 INFO periodic-camera: Reached maximum capture count: 10
+2026-07-17 13:09:29,058 INFO periodic-camera: Periodic camera mission stopped
+2026-07-17 13:25:32,456 INFO periodic-camera: Starting periodic camera mission
+2026-07-17 13:25:33,430 INFO periodic-camera: Captured image ./caps/2026-07-17 13-25-32.jpg: Image saved
+2026-07-17 13:26:02,428 INFO periodic-camera: Shutdown requested by signal 15
+2026-07-17 13:26:02,439 INFO periodic-camera: Periodic camera mission stopped
+2026-07-17 13:26:35,367 INFO periodic-camera: Starting periodic camera mission
+2026-07-17 13:26:36,346 INFO periodic-camera: Captured image ./caps/2026-07-17 13-26-35.jpg: Image saved
+2026-07-17 13:27:07,338 INFO periodic-camera: Captured image ./caps/2026-07-17 13-27-06.jpg: Image saved
+2026-07-17 13:27:38,364 INFO periodic-camera: Captured image ./caps/2026-07-17 13-27-37.jpg: Image saved
+2026-07-17 13:28:09,386 INFO periodic-camera: Captured image ./caps/2026-07-17 13-28-08.jpg: Image saved
+2026-07-17 13:28:40,314 INFO periodic-camera: Captured image ./caps/2026-07-17 13-28-39.jpg: Image saved
+2026-07-17 13:29:11,278 INFO periodic-camera: Captured image ./caps/2026-07-17 13-29-10.jpg: Image saved
+2026-07-17 13:29:42,297 INFO periodic-camera: Captured image ./caps/2026-07-17 13-29-41.jpg: Image saved
+2026-07-17 13:30:13,335 INFO periodic-camera: Captured image ./caps/2026-07-17 13-30-12.jpg: Image saved
+2026-07-17 13:30:44,321 INFO periodic-camera: Captured image ./caps/2026-07-17 13-30-43.jpg: Image saved
+2026-07-17 13:31:15,284 INFO periodic-camera: Captured image ./caps/2026-07-17 13-31-14.jpg: Image saved
+2026-07-17 13:31:15,284 INFO periodic-camera: Reached maximum capture count: 10
+2026-07-17 13:31:15,285 INFO periodic-camera: Periodic camera mission stopped
+Traceback (most recent call last):
+  File "/home/mossy/COR-SAT/missions/periodic-camera/mission.py", line 11, in <module>
+    from sat_sdk import SatClient
+ModuleNotFoundError: No module named 'sat_sdk'
+Traceback (most recent call last):
+  File "/home/mossy/COR-SAT/missions/periodic-camera/mission.py", line 11, in <module>
+    from sat_sdk import SatClient
+ModuleNotFoundError: No module named 'sat_sdk'
+Traceback (most recent call last):
+  File "/home/mossy/COR-SAT/missions/periodic-camera/mission.py", line 11, in <module>
+    from sat_sdk import SatClient
+ModuleNotFoundError: No module named 'sat_sdk'
+Traceback (most recent call last):
+  File "/home/mossy/COR-SAT/missions/periodic-camera/mission.py", line 11, in <module>
+    from sat_sdk import SatClient
+ModuleNotFoundError: No module named 'sat_sdk'
+Traceback (most recent call last):
+  File "/home/mossy/COR-SAT/missions/periodic-camera/mission.py", line 11, in <module>
+    from sat_sdk import SatClient
+ModuleNotFoundError: No module named 'sat_sdk'
+2026-07-18 17:42:29,933 INFO periodic-camera: Starting periodic camera mission
+2026-07-18 17:42:30,947 INFO periodic-camera: Captured image ./caps/2026-07-18 17-42-29.jpg: Image saved
+2026-07-18 17:42:59,917 INFO periodic-camera: Starting periodic camera mission
+2026-07-18 17:43:00,904 INFO periodic-camera: Captured image ./caps/2026-07-18 17-42-59.jpg: Image saved
+2026-07-18 17:43:31,915 INFO periodic-camera: Captured image ./caps/2026-07-18 17-43-30.jpg: Image saved
+2026-07-18 17:44:02,912 INFO periodic-camera: Captured image ./caps/2026-07-18 17-44-01.jpg: Image saved
+2026-07-18 17:44:33,946 INFO periodic-camera: Captured image ./caps/2026-07-18 17-44-32.jpg: Image saved
+2026-07-18 17:45:04,971 INFO periodic-camera: Captured image ./caps/2026-07-18 17-45-03.jpg: Image saved
+2026-07-18 17:45:36,002 INFO periodic-camera: Captured image ./caps/2026-07-18 17-45-34.jpg: Image saved
+2026-07-18 17:46:07,033 INFO periodic-camera: Captured image ./caps/2026-07-18 17-46-06.jpg: Image saved
+2026-07-18 17:46:38,076 INFO periodic-camera: Captured image ./caps/2026-07-18 17-46-37.jpg: Image saved
+2026-07-18 17:47:09,133 INFO periodic-camera: Captured image ./caps/2026-07-18 17-47-08.jpg: Image saved
+2026-07-18 17:47:40,174 INFO periodic-camera: Captured image ./caps/2026-07-18 17-47-39.jpg: Image saved
+2026-07-18 17:47:40,174 INFO periodic-camera: Reached maximum capture count: 10
+2026-07-18 17:47:40,175 INFO periodic-camera: Periodic camera mission stopped
