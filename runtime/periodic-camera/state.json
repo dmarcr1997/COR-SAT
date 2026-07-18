@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "state": "STOPPED",
   "pid": null,
-  "supervisor_pid": null,
-  "restart_count": 1,
-  "last_exit_code": 0,
-  "last_exit_reason": "clean_exit",
-  "started_at": "2026-07-18T21:42:59.771061+00:00",
-  "stopped_at": "2026-07-18T21:47:40.364854+00:00"
+  "supervisor_pid": 4600,
+  "restart_count": 0,
+  "last_exit_code": null,
+  "last_exit_reason": "process_already_stopped",
+  "started_at": "2026-07-18T22:14:59.095025+00:00",
+  "stopped_at": "2026-07-18T22:19:59.092474+00:00"
 }

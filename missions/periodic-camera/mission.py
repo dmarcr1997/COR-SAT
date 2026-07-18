@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import os
+from datetime import datetime, timezone
 import logging
 import signal
 import time
@@ -24,6 +26,34 @@ logging.basicConfig(
 logger = logging.getLogger("periodic-camera")
 shutdown_requested = False
 
+HEARTBEAT_PATH = Path(
+    os.environ["SAT_HEARTBEAT_PATH"]
+)
+
+
+def utc_now() -> str:
+    return datetime.now(
+        timezone.utc
+    ).isoformat()
+
+
+def write_heartbeat() -> None:
+    heartbeat = {
+        "mission": os.environ["SAT_MISSION_NAME"],
+        "pid": os.getpid(),
+        "timestamp": utc_now(),
+    }
+
+    temporary_path = HEARTBEAT_PATH.with_suffix(
+        ".json.tmp"
+    )
+
+    temporary_path.write_text(
+        json.dumps(heartbeat, indent=2),
+        encoding="utf-8",
+    )
+
+    temporary_path.replace(HEARTBEAT_PATH)
 
 def handle_shutdown(signum: int, frame: Any) -> None:
     global shutdown_requested
@@ -66,6 +96,7 @@ def main() -> int:
 
     while not shutdown_requested:
         try:
+            write_heartbeat()
             image = sat.camera.capture()
             capture_count += 1
 

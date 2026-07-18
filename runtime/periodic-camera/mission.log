@@ -99,3 +99,16 @@ ModuleNotFoundError: No module named 'sat_sdk'
 2026-07-18 17:47:40,174 INFO periodic-camera: Captured image ./caps/2026-07-18 17-47-39.jpg: Image saved
 2026-07-18 17:47:40,174 INFO periodic-camera: Reached maximum capture count: 10
 2026-07-18 17:47:40,175 INFO periodic-camera: Periodic camera mission stopped
+2026-07-18 18:14:59,245 INFO periodic-camera: Starting periodic camera mission
+2026-07-18 18:15:00,249 INFO periodic-camera: Captured image ./caps/2026-07-18 18-14-59.jpg: Image saved
+2026-07-18 18:15:31,285 INFO periodic-camera: Captured image ./caps/2026-07-18 18-15-30.jpg: Image saved
+2026-07-18 18:16:02,352 INFO periodic-camera: Captured image ./caps/2026-07-18 18-16-01.jpg: Image saved
+2026-07-18 18:16:33,394 INFO periodic-camera: Captured image ./caps/2026-07-18 18-16-32.jpg: Image saved
+2026-07-18 18:17:04,444 INFO periodic-camera: Captured image ./caps/2026-07-18 18-17-03.jpg: Image saved
+2026-07-18 18:17:35,463 INFO periodic-camera: Captured image ./caps/2026-07-18 18-17-34.jpg: Image saved
+2026-07-18 18:18:06,524 INFO periodic-camera: Captured image ./caps/2026-07-18 18-18-05.jpg: Image saved
+2026-07-18 18:18:37,561 INFO periodic-camera: Captured image ./caps/2026-07-18 18-18-36.jpg: Image saved
+2026-07-18 18:19:08,548 INFO periodic-camera: Captured image ./caps/2026-07-18 18-19-07.jpg: Image saved
+2026-07-18 18:19:39,504 INFO periodic-camera: Captured image ./caps/2026-07-18 18-19-38.jpg: Image saved
+2026-07-18 18:19:39,504 INFO periodic-camera: Reached maximum capture count: 10
+2026-07-18 18:19:39,504 INFO periodic-camera: Periodic camera mission stopped
