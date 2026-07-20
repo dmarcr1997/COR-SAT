@@ -6,13 +6,15 @@ use axum::{
 mod health;
 mod camera;
 mod system;
+mod capabilities;
 
 #[tokio::main]
 async fn main() {
     let app = Router::new()
 	.route("/v1/system/health", get(health::check_health))
         .route("/v1/system/status", get(system::get_status))
-        .route("/v1/camera/capture", post(camera::capture_image));
+        .route("/v1/camera/capture", post(camera::capture_image))
+        .route("/v1/system/capabilities", get(capabilities::get_capabilities));
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000")
         .await

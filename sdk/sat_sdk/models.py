@@ -16,3 +16,8 @@ class SystemStatusResponse:
 class CaptureResponse:
     message: str
     filename: str
+
+@dataclass(frozen=True)
+class CapabilitiesResponse:
+    capabilities: list[str]
+    health_check: bool

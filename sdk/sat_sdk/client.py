@@ -2,6 +2,7 @@ import requests
 from sat_sdk.system import SystemModule
 from sat_sdk.camera import CameraModule
 from sat_sdk.models import HealthResponse
+from sat_sdk.capabilites import CapabilitiesModule
 from sat_sdk.exceptions import SatConnectionError, SatAPIError
 
 class SatClient:
@@ -13,6 +14,7 @@ class SatClient:
         
         self.system = SystemModule(self.base_url, self.timeout)
         self.camera = CameraModule(self.base_url, self.timeout)
+        self.capabilities = CapabilitiesModule(self.base_url, self.timeout)
 
     def health(self) -> HealthResponse:
         """Probes core system reachability and subsystem mapping state."""
