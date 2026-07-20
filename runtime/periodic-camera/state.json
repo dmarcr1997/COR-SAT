@@ -2,8 +2,11 @@
   "mission": "periodic-camera",
   "version": "0.1.0",
   "state": "STOPPED",
-  "pid": 2633,
-  "started_at": "2026-07-16T21:01:36.886803+00:00",
-  "stopped_at": "2026-07-16T21:01:47.097818+00:00",
-  "reason": "requested_stop"
+  "pid": null,
+  "supervisor_pid": 4600,
+  "restart_count": 0,
+  "last_exit_code": null,
+  "last_exit_reason": "process_already_stopped",
+  "started_at": "2026-07-18T22:14:59.095025+00:00",
+  "stopped_at": "2026-07-18T22:19:59.092474+00:00"
 }
