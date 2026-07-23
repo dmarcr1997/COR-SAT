@@ -18,10 +18,12 @@ Required process:
 Use the SDK only for hardware access.
 
 Approved local processing libraries include:
+
 - cv2
 - numpy
 
 Do not:
+
 - modify existing missions
 - write outside candidates/
 - use subprocess
