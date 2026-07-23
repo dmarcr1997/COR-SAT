@@ -54,15 +54,12 @@ MISSION_TOOLS = [
         "function": {
             "name": "write_mission_file",
             "description": (
-                "Write manifest.json or mission.py "
-                "inside a candidate directory."
+                "Write one required file into the current "
+                "mission candidate directory."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "candidate_name": {
-                        "type": "string",
-                    },
                     "filename": {
                         "type": "string",
                         "enum": [
@@ -75,11 +72,10 @@ MISSION_TOOLS = [
                     },
                 },
                 "required": [
-                    "candidate_name",
                     "filename",
                     "content",
                 ],
             },
         },
-    },
+    }
 ]

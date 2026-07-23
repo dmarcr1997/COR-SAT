@@ -35,7 +35,7 @@ MAX_WORKING_MEMORY_CHARS = 24_000
 # Prevent one file read/search result from flooding context.
 MAX_TOOL_RESULT_CHARS = 6_000
 
-
+written_files: set[str] = set()
 # ============================================================
 # Messages
 # ============================================================
@@ -186,6 +186,7 @@ def call_model(
 def execute_tool(
     tool_name: str,
     arguments: dict[str, Any],
+    candidate_name: str,
 ) -> Any:
     if tool_name == "read_mission_file":
         return read_mission_file(
@@ -202,10 +203,12 @@ def execute_tool(
         )
 
     if tool_name == "write_mission_file":
+        filename = arguments.get("filename")
+
+        if isinstance(filename, str):
+            written_files.add(filename)
         return write_mission_file(
-            candidate_name=arguments[
-                "candidate_name"
-            ],
+            candidate_name=candidate_name,
             filename=arguments["filename"],
             content=arguments["content"],
         )
@@ -263,6 +266,35 @@ def make_tool_result_message(
         "tool_name": tool_name,
         "content": content,
     }
+
+def normalize_tool_arguments(
+    tool_name: str,
+    arguments: dict[str, Any],
+) -> dict[str, Any]:
+    if tool_name != "write_mission_file":
+        return arguments
+
+    normalized = dict(arguments)
+
+    if "filename" not in normalized:
+        possible_filename = normalized.get(
+            "candidate_name"
+        )
+
+        if possible_filename in {
+            "manifest.json",
+            "mission.py",
+        }:
+            normalized["filename"] = (
+                possible_filename
+            )
+
+    normalized.pop(
+        "candidate_name",
+        None,
+    )
+
+    return normalized
 
 
 # ============================================================
@@ -445,6 +477,10 @@ def run_mission_agent(
             arguments = dict(
                 tool_call.function.arguments
             )
+            arguments = normalize_tool_arguments(
+                tool_name,
+                arguments
+            )
 
             print(
                 f"Tool: {tool_name}"
@@ -454,6 +490,7 @@ def run_mission_agent(
                 result = execute_tool(
                     tool_name,
                     arguments,
+                    candidate_name=candidate_name,
                 )
 
                 tool_message = (
@@ -495,7 +532,18 @@ def run_mission_agent(
             "Agent reached the maximum number "
             "of tool rounds"
         )
+    required_files = {
+        "manifest.json",
+        "mission.py",
+    }
 
+    missing_files = required_files - written_files
+
+    if missing_files:
+        raise RuntimeError(
+            "Model did not write required files: "
+            + ", ".join(sorted(missing_files))
+        )
     candidate_directory = (
         verify_candidate_files(
             candidate_name
