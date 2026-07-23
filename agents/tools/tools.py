@@ -66,13 +66,7 @@ def write_mission_file(
     candidate_directory = safe_candidate_path(
         candidate_name
     )
-
-    if candidate_directory.exists():
-        raise RuntimeError(
-            f"Candidate already exists: "
-            f"candidates/{candidate_name}"
-        )
-
+    
     candidate_directory.mkdir(
         parents=True,
         exist_ok=True,

@@ -431,6 +431,16 @@ def run_mission_agent(
     mission_request: str,
     candidate_name: str,
 ) -> Path:
+    candidate_directory = safe_candidate_path(
+        candidate_name
+    )
+
+    if candidate_directory.exists():
+        raise RuntimeError(
+            f"Candidate already exists: "
+            f"candidates/{candidate_name}"
+        )
+    
     messages: list[Any] = build_messages(
         mission_request=mission_request,
         candidate_name=candidate_name,
