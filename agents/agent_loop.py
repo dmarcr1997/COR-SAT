@@ -432,6 +432,10 @@ def run_mission_agent(
             break
 
         for tool_call in tool_calls:
+            print(
+                "RAW TOOL CALL:",
+                tool_call.model_dump(),
+            )
             total_tool_calls += 1
 
             tool_name = (
