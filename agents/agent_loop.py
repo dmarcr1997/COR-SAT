@@ -20,7 +20,7 @@ from agents.tools.tools import (
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 PROMPT_PATH = (
     PROJECT_ROOT
-    / "agent"
+    / "agents"
     / "prompts"
     / "mission_builder.md"
 )
