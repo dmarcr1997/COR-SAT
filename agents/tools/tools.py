@@ -1,3 +1,6 @@
+from __future__ import annotations
+from typing import Any
+import json
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -53,7 +56,7 @@ def safe_read_path(relative_path: str) -> Path:
 def write_mission_file(
         candidate_name: str,
         filename: str,
-        content: str
+        content: str | dict[str, Any],
 ) -> str:
     if filename not in ALLOWED_FILENAMES:
         raise MissionToolError(
@@ -79,8 +82,20 @@ def write_mission_file(
         f"{candidate_name}/{filename}"
     )
 
+    if isinstance(content, dict):
+        file_content = json.dumps(
+            content,
+            indent=2,
+        )
+    elif isinstance(content, str):
+        file_content = content
+    else:
+        raise MissionToolError(
+            "File content must be a string or JSON object"
+        )
+
     destination.write_text(
-        content.rstrip() + "\n",
+        file_content.rstrip() + "\n",
         encoding="utf-8",
     )
 

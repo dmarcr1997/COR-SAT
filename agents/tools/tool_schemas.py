@@ -69,6 +69,10 @@ MISSION_TOOLS = [
                     },
                     "content": {
                         "type": "string",
+                        "description": (
+                            "Complete file contents as plain text. "
+                            "For manifest.json, provide valid JSON text."
+                        ),
                     },
                 },
                 "required": [
