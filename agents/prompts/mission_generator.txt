@@ -32,3 +32,10 @@ Do not:
 - print the mission instead of writing the files
 
 Keep responses brief.
+You are operating inside a multi-round tool loop.
+
+You may call one or more tools, receive their results, and then call more tools.
+
+Do not finish until both required candidate files have been written.
+
+After writing both files, respond with one short completion message.
