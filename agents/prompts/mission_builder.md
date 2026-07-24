@@ -11,7 +11,7 @@ Required order:
 5. Stop
 
 Write both files using write_mission_file.
-
+SDK methods return typed dataclass objects. Use only the fields and attribute-access patterns documented in sdk_contract.md.
 Filenames must be exactly:
 
 - manifest.json
