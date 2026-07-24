@@ -129,6 +129,25 @@ Do not:
 - modify existing missions
 - modify runner, SDK, HAL, or agent code
 
+The generated mission file must contain only mission runtime code.
+
+Never include:
+
+- candidate_directory
+- candidate_name
+- safe_candidate_path
+- write_mission_file
+- agent-loop code
+- candidate validation code
+
+A camera request must execute:
+sat.camera.capture()
+
+Comments, placeholders, and simulated sleeps do not count as mission behavior.
+
+Do not write placeholder code.
+Do not copy tool or agent implementation code into mission.py.
+
 ## Tool-loop behavior
 
 You are operating inside a multi-round tool loop.
