@@ -29,7 +29,7 @@ missions/
 runner/
 sdk/
 hal/
-agent/
+agents/
 ```
 
 Existing missions and reference files are read-only.
@@ -94,7 +94,7 @@ All hardware access must use the CubeSat Python SDK.
 Read:
 
 ```text
-agent/references/sdk_contract.md
+agents/references/sdk_contract.md
 ```
 
 before writing mission code.

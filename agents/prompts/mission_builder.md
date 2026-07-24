@@ -17,8 +17,8 @@ Do not print the file contents instead of writing them.
 
 Complete these steps in order:
 
-1. Read `agent/references/mission_contract.md`
-2. Read `agent/references/sdk_contract.md`
+1. Read `agents/references/mission_contract.md`
+2. Read `agents/references/sdk_contract.md`
 3. Search for a relevant example only when needed
 4. Write `manifest.json`
 5. Write `mission.py`
