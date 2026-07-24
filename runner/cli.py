@@ -34,11 +34,13 @@ HEARTBEAT_CHECK_INTERVAL_SECONDS = 1.0
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 MISSIONS_ROOT = PROJECT_ROOT / "missions"
+CANDIDATE_ROOT = PROJECT_ROOT / "agents/candidates"
 RUNTIME_ROOT = PROJECT_ROOT / "runtime"
 
+start_dir = MISSIONS_ROOT
 
 def mission_directory(mission_name: str) -> Path:
-	return MISSIONS_ROOT / mission_name
+	return start_dir / mission_name
 
 
 def runtime_directory(mission_name: str) -> Path:
@@ -888,7 +890,7 @@ def build_parser() -> argparse.ArgumentParser:
 		help="Show mission status",
 	)
 	status_parser.add_argument("mission_name")
-
+	status_parser.add_argument("candidate", nargs="?", default=False, help="Use candidate agent dir instead of mission dir")
 	logs_parser = subparsers.add_parser(
 		"logs",
 		help="Show mission logs",
@@ -945,6 +947,8 @@ def main() -> int:
 				args.mission_name,
 				timeout_seconds=args.timeout,
 			)
+		case "candidate":
+			start_dir = CANDIDATE_ROOT
 
 		case _:
 			parser.error(
