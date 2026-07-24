@@ -4,14 +4,7 @@
   "title": "Satellite Mission Manifest",
   "type": "object",
   "additionalProperties": false,
-  "required": [
-    "schema_version",
-    "name",
-    "version",
-    "entrypoint",
-    "permissions",
-    "configuration"
-  ],
+  "required": ["name", "version", "entrypoint"],
   "properties": {
     "schema_version": {
       "type": "integer",
@@ -34,10 +27,7 @@
       "uniqueItems": true,
       "items": {
         "type": "string",
-        "enum": [
-          "camera.capture",
-          "system.status"
-        ]
+        "enum": ["camera.capture", "system.status"]
       }
     },
     "configuration": {
