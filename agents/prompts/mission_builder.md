@@ -1,6 +1,6 @@
 # CubeSat Mission Builder
 
-Create a CubeSat mission candidate using the provided tools.
+Create one CubeSat mission candidate using the provided tools.
 
 ## Required workflow
 
@@ -14,27 +14,36 @@ Follow these steps in order:
 
 Do not finish until both files have been written.
 
-## Writing files
+## File writing
 
 Use `write_mission_file`.
 
-For the manifest, use:
+Write exactly:
 
-- filename: `manifest.json`
-- content: valid JSON
+- `manifest.json`
+- `mission.py`
 
-For the mission, use:
+For each tool call, provide:
 
-- filename: `mission.py`
-- content: complete Python source code
+- `filename`
+- `content`
 
-Do not include directory paths in filenames.
+Valid filenames are exactly:
+
+```text
+manifest.json
+mission.py
+```
+
+Do not include directory paths.
 
 Do not pass a candidate name.
 
-## Manifest requirements
+Do not print or describe the files instead of writing them.
 
-The manifest must contain:
+## Manifest
+
+Write valid JSON with these required fields:
 
 ```json
 {
@@ -44,11 +53,25 @@ The manifest must contain:
 }
 ```
 
-The host system may replace the mission name with the current candidate name.
+The host may replace the mission name with the current candidate name.
 
-## Mission requirements
+The entrypoint must be exactly:
 
-Use the CubeSat SDK for hardware access.
+```text
+mission.py
+```
+
+## Mission behavior
+
+Use the CubeSat Python SDK for all hardware access.
+
+Initialize it exactly as documented:
+
+```python
+from sat_sdk import SatClient
+
+sat = SatClient()
+```
 
 A camera capture must execute:
 
@@ -56,41 +79,102 @@ A camera capture must execute:
 sat.camera.capture()
 ```
 
-Initialize the SDK exactly as documented in `sdk_contract.md`.
-
 For repeated work:
 
-- handle shutdown signals
-- call the heartbeat
-- perform the requested number of actions
+- handle `SIGTERM`
+- call `sat.heartbeat()`
+- perform exactly the requested number of actions
 - use the requested interval
+- avoid sleeping after the final action
 - exit normally when complete
+
+For finite missions, do not use an infinite loop.
+
+## Hardware and processing
+
+Use the SDK for hardware access.
+
+Use approved local libraries only for processing data after hardware access.
 
 Approved processing libraries:
 
-- `cv2`
-- `numpy`
+```python
+import cv2
+import numpy as np
+```
+
+Valid:
+
+```python
+capture = sat.camera.capture()
+image = cv2.imread(capture["path"])
+```
+
+Invalid:
+
+```python
+sat.camera = cv2.VideoCapture(0)
+```
+
+Never assign to:
+
+```python
+sat.camera
+sat.system
+```
+
+Never use OpenCV to open, configure, or release the physical camera.
 
 ## Forbidden behavior
 
 Do not:
 
 - write placeholder code
+- write TODO comments instead of implementation
 - simulate hardware with print statements
 - comment out required mission behavior
-- invent SDK methods
-- access hardware directly
-- run shell commands
+- invent SDK methods or properties
+- use `cv2.VideoCapture`
+- use `Picamera2`
+- access GPIO directly
+- access HAL HTTP endpoints directly
 - use `subprocess`
-- include agent or candidate-management code
+- run shell commands
+- open network sockets
+- include agent code
+- include candidate-management code
+- include validator code
 - modify existing project files
+
+Never use or invent:
+
+```python
+sat.shutdown
+sat.camera.framerate
+sat.camera.resolution
+sat.camera.release()
+sat.camera.stream()
+sat.system.shutdown()
+```
 
 ## Search tool
 
-Use `find_in_mission_files` only when the requested mission requires an algorithm or example not explained in the two contract files.
+Use `find_in_mission_files` only when the requested mission requires an algorithm not explained in the contracts.
 
 Simple camera and system-status missions do not require search.
 
+For optical flow, search for:
+
+```text
+calcOpticalFlowPyrLK
+```
+
+Do not search using the entire mission request.
+
+## Completion
+
 After writing both files, respond only:
 
-`Mission candidate created.`
+```text
+Mission candidate created.
+```
