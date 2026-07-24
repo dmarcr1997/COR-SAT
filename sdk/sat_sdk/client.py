@@ -16,7 +16,7 @@ class SatClient:
         self.camera = CameraModule(self.base_url, self.timeout)
         self.capabilities = CapabilitiesModule(self.base_url, self.timeout)
 
-    def health(self) -> HealthResponse:
+    def heartbeat(self) -> HealthResponse:
         """Probes core system reachability and subsystem mapping state."""
         try:
             url = f"{self.base_url}/v1/system/health"
