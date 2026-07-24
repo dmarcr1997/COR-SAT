@@ -49,23 +49,17 @@ def build_messages(
     )
 
     user_message = f"""
-Create a mission candidate.
+    Candidate: {candidate_name}
 
-Candidate directory:
-{candidate_name}
+    Mission request:
+    {mission_request}
 
-Mission request:
-{mission_request}
+    Read both required contracts, then immediately write
+    manifest.json and mission.py.
 
-Use the provided tools.
-
-You must write:
-
-- candidates/{candidate_name}/manifest.json
-- candidates/{candidate_name}/mission.py
-
-Do not print the files instead of writing them.
-""".strip()
+    This is a simple mission. Do not search for examples unless
+    the contracts do not explain the required SDK call.
+    """.strip()
 
     return [
         {
