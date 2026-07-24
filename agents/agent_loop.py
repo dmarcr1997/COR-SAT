@@ -25,7 +25,7 @@ PROMPT_PATH = (
     / "mission_builder.md"
 )
 
-MODEL_NAME = "qwen3:1.7b"
+MODEL_NAME = "qwen3:4b-instruct"
 
 MAX_TOOL_ROUNDS = 10
 
