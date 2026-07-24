@@ -1,180 +1,28 @@
 # CubeSat Mission Builder
 
-Create one CubeSat mission candidate using the provided tools.
+Create one mission candidate.
 
-## Required workflow
+Required order:
 
-Follow these steps in order:
-
-1. Read `agents/references/mission_contract.md`
-2. Read `agents/references/sdk_contract.md`
-3. Write `manifest.json`
-4. Write `mission.py`
+1. Read agents/references/mission_contract.md
+2. Read agents/references/sdk_contract.md
+3. Write manifest.json
+4. Write mission.py
 5. Stop
 
-Do not finish until both files have been written.
+Write both files using write_mission_file.
 
-## File writing
+Filenames must be exactly:
 
-Use `write_mission_file`.
-
-Write exactly:
-
-- `manifest.json`
-- `mission.py`
-
-For each tool call, provide:
-
-- `filename`
-- `content`
-
-Valid filenames are exactly:
-
-```text
-manifest.json
-mission.py
-```
+- manifest.json
+- mission.py
 
 Do not include directory paths.
 
-Do not pass a candidate name.
+Follow the contracts exactly.
+Use only SDK calls documented in sdk_contract.md.
+Do not invent methods, properties, or hardware interfaces.
+Do not finish until both files are written.
 
-Do not print or describe the files instead of writing them.
-
-## Manifest
-
-Write valid JSON with these required fields:
-
-```json
-{
-  "name": "generated-mission",
-  "version": "0.1.0",
-  "entrypoint": "mission.py"
-}
-```
-
-The host may replace the mission name with the current candidate name.
-
-The entrypoint must be exactly:
-
-```text
-mission.py
-```
-
-## Mission behavior
-
-Use the CubeSat Python SDK for all hardware access.
-
-Initialize it exactly as documented:
-
-```python
-from sat_sdk import SatClient
-
-sat = SatClient()
-```
-
-A camera capture must execute:
-
-```python
-sat.camera.capture()
-```
-
-For repeated work:
-
-- handle `SIGTERM`
-- call `sat.heartbeat()`
-- perform exactly the requested number of actions
-- use the requested interval
-- avoid sleeping after the final action
-- exit normally when complete
-
-For finite missions, do not use an infinite loop.
-
-## Hardware and processing
-
-Use the SDK for hardware access.
-
-Use approved local libraries only for processing data after hardware access.
-
-Approved processing libraries:
-
-```python
-import cv2
-import numpy as np
-```
-
-Valid:
-
-```python
-capture = sat.camera.capture()
-image = cv2.imread(capture["path"])
-```
-
-Invalid:
-
-```python
-sat.camera = cv2.VideoCapture(0)
-```
-
-Never assign to:
-
-```python
-sat.camera
-sat.system
-```
-
-Never use OpenCV to open, configure, or release the physical camera.
-
-## Forbidden behavior
-
-Do not:
-
-- write placeholder code
-- write TODO comments instead of implementation
-- simulate hardware with print statements
-- comment out required mission behavior
-- invent SDK methods or properties
-- use `cv2.VideoCapture`
-- use `Picamera2`
-- access GPIO directly
-- access HAL HTTP endpoints directly
-- use `subprocess`
-- run shell commands
-- open network sockets
-- include agent code
-- include candidate-management code
-- include validator code
-- modify existing project files
-
-Never use or invent:
-
-```python
-sat.shutdown
-sat.camera.framerate
-sat.camera.resolution
-sat.camera.release()
-sat.camera.stream()
-sat.system.shutdown()
-```
-
-## Search tool
-
-Use `find_in_mission_files` only when the requested mission requires an algorithm not explained in the contracts.
-
-Simple camera and system-status missions do not require search.
-
-For optical flow, search for:
-
-```text
-calcOpticalFlowPyrLK
-```
-
-Do not search using the entire mission request.
-
-## Completion
-
-After writing both files, respond only:
-
-```text
+After writing both files, respond:
 Mission candidate created.
-```
