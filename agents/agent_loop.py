@@ -18,6 +18,7 @@ from agents.tools.tools import (
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
 PROMPT_PATH = (
     PROJECT_ROOT
     / "agents"
@@ -27,7 +28,7 @@ PROMPT_PATH = (
 
 MODEL_NAME = "qwen3:4b-instruct"
 
-MAX_TOOL_ROUNDS = 10
+MAX_TOOL_ROUNDS = 12
 
 # Rough character limit, not an exact token limit.
 MAX_WORKING_MEMORY_CHARS = 24_000
@@ -35,7 +36,7 @@ MAX_WORKING_MEMORY_CHARS = 24_000
 # Prevent one file read/search result from flooding context.
 MAX_TOOL_RESULT_CHARS = 6_000
 
-written_files: set[str] = set()
+
 # ============================================================
 # Messages
 # ============================================================
@@ -45,21 +46,28 @@ def build_messages(
     candidate_name: str,
 ) -> list[dict[str, Any]]:
     system_prompt = PROMPT_PATH.read_text(
-        encoding="utf-8"
+        encoding="utf-8",
     )
 
     user_message = f"""
-    Candidate: {candidate_name}
+Candidate: {candidate_name}
 
-    Mission request:
-    {mission_request}
+Mission request:
+{mission_request}
 
-    Read both required contracts, then immediately write
-    manifest.json and mission.py.
+Use the workflow status provided by the controller.
 
-    This is a simple mission. Do not search for examples unless
-    the contracts do not explain the required SDK call.
-    """.strip()
+Read every required reference exactly once.
+
+After all required references are read:
+
+1. Write manifest.json
+2. Write mission.py
+3. Stop
+
+Do not print file contents.
+Do not respond with plain text while required files are missing.
+""".strip()
 
     return [
         {
@@ -76,8 +84,6 @@ def build_messages(
 def message_size(message: Any) -> int:
     """
     Estimate how much context a message consumes.
-
-    This is intentionally approximate.
     """
 
     if hasattr(message, "model_dump_json"):
@@ -103,9 +109,6 @@ def trim_working_memory(
     - the system prompt
     - the original user request
     - the most recent agent/tool activity
-
-    Older temporary interactions are dropped when the
-    rough context budget is exceeded.
     """
 
     if len(messages) <= 2:
@@ -120,7 +123,8 @@ def trim_working_memory(
     )
 
     remaining_budget = (
-        MAX_WORKING_MEMORY_CHARS - pinned_size
+        MAX_WORKING_MEMORY_CHARS
+        - pinned_size
     )
 
     kept_recent_messages: list[Any] = []
@@ -143,6 +147,118 @@ def trim_working_memory(
     ]
 
 
+def build_workflow_status(
+    required_reads: set[str],
+    read_files: set[str],
+    required_files: set[str],
+    written_files: set[str],
+) -> str:
+    """
+    Tell the model exactly where it is in the workflow.
+    """
+
+    lines = [
+        "Mission workflow status:",
+        "",
+        "Required references:",
+    ]
+
+    for path in sorted(required_reads):
+        status = (
+            "read"
+            if path in read_files
+            else "missing"
+        )
+
+        lines.append(
+            f"- [{status}] {path}"
+        )
+
+    lines.extend(
+        [
+            "",
+            "Required output files:",
+        ]
+    )
+
+    for filename in sorted(required_files):
+        status = (
+            "written"
+            if filename in written_files
+            else "missing"
+        )
+
+        lines.append(
+            f"- [{status}] {filename}"
+        )
+
+    unread_files = (
+        required_reads - read_files
+    )
+
+    missing_files = (
+        required_files - written_files
+    )
+
+    lines.append("")
+
+    if unread_files:
+        next_file = sorted(unread_files)[0]
+
+        lines.extend(
+            [
+                "Next required action:",
+                (
+                    "Call read_mission_file for "
+                    f"{next_file}."
+                ),
+                "Do not write output files yet.",
+                "Do not respond with plain text.",
+            ]
+        )
+
+    elif "manifest.json" in missing_files:
+        lines.extend(
+            [
+                "All required references have been read.",
+                "Next required action:",
+                (
+                    "Call write_mission_file for "
+                    "manifest.json."
+                ),
+                "Do not read any more files.",
+                "Do not respond with plain text.",
+            ]
+        )
+
+    elif "mission.py" in missing_files:
+        lines.extend(
+            [
+                "manifest.json has been written.",
+                "Next required action:",
+                (
+                    "Call write_mission_file for "
+                    "mission.py."
+                ),
+                "Do not read any more files.",
+                "Do not respond with plain text.",
+            ]
+        )
+
+    else:
+        lines.extend(
+            [
+                "Both required files have been written.",
+                (
+                    "Respond exactly: "
+                    "Mission candidate created."
+                ),
+            ]
+        )
+
+    return "\n".join(lines)
+
+
 # ============================================================
 # Ollama
 # ============================================================
@@ -159,16 +275,11 @@ def call_model(
         messages=trimmed_messages,
         tools=MISSION_TOOLS,
         stream=False,
-
-        # Prevent the long "Thinking..." spiral.
         think=False,
-
         options={
             "temperature": 0.2,
             "top_p": 0.9,
         },
-
-        # Keep the model loaded between tool rounds.
         keep_alive="10m",
     )
 
@@ -181,11 +292,32 @@ def execute_tool(
     tool_name: str,
     arguments: dict[str, Any],
     candidate_name: str,
+    read_files: set[str],
+    written_files: set[str],
 ) -> Any:
     if tool_name == "read_mission_file":
-        return read_mission_file(
-            relative_path=arguments["relative_path"],
+        relative_path = arguments[
+            "relative_path"
+        ]
+
+        if relative_path in read_files:
+            return {
+                "ok": False,
+                "code": "FILE_ALREADY_READ",
+                "message": (
+                    f"{relative_path} was already read. "
+                    "Do not read it again. Continue to "
+                    "the next required action."
+                ),
+            }
+
+        result = read_mission_file(
+            relative_path=relative_path,
         )
+
+        read_files.add(relative_path)
+
+        return result
 
     if tool_name == "find_in_mission_files":
         return find_in_mission_files(
@@ -197,27 +329,28 @@ def execute_tool(
         )
 
     if tool_name == "write_mission_file":
-        filename = arguments.get("filename")
+        filename = arguments["filename"]
 
-        if isinstance(filename, str):
-            written_files.add(filename)
-        return write_mission_file(
+        result = write_mission_file(
             candidate_name=candidate_name,
-            filename=arguments["filename"],
+            filename=filename,
             content=arguments["content"],
         )
+
+        written_files.add(filename)
+
+        return result
 
     raise MissionToolError(
         f"Unknown tool: {tool_name}"
     )
 
 
-def format_tool_result(result: Any) -> str:
+def format_tool_result(
+    result: Any,
+) -> str:
     """
     Convert tool output into compact text for Qwen.
-
-    Large outputs are clipped so one read operation cannot
-    consume the whole working-memory budget.
     """
 
     if isinstance(result, str):
@@ -233,14 +366,18 @@ def format_tool_result(result: Any) -> str:
         return text
 
     removed_characters = (
-        len(text) - MAX_TOOL_RESULT_CHARS
+        len(text)
+        - MAX_TOOL_RESULT_CHARS
     )
 
     return (
         text[:MAX_TOOL_RESULT_CHARS]
         + "\n\n"
-        + f"[Tool result truncated: "
-        + f"{removed_characters} characters omitted]"
+        + (
+            "[Tool result truncated: "
+            f"{removed_characters} "
+            "characters omitted]"
+        )
     )
 
 
@@ -250,16 +387,21 @@ def make_tool_result_message(
     *,
     error: bool = False,
 ) -> dict[str, Any]:
-    content = format_tool_result(result)
+    content = format_tool_result(
+        result
+    )
 
     if error:
-        content = f"TOOL_ERROR\n{content}"
+        content = (
+            f"TOOL_ERROR\n{content}"
+        )
 
     return {
         "role": "tool",
         "tool_name": tool_name,
         "content": content,
     }
+
 
 def normalize_tool_arguments(
     tool_name: str,
@@ -303,19 +445,26 @@ def verify_candidate_files(
     )
 
     manifest_path = (
-        candidate_directory / "manifest.json"
+        candidate_directory
+        / "manifest.json"
     )
+
     mission_path = (
-        candidate_directory / "mission.py"
+        candidate_directory
+        / "mission.py"
     )
 
     missing_files: list[str] = []
 
     if not manifest_path.is_file():
-        missing_files.append("manifest.json")
+        missing_files.append(
+            "manifest.json"
+        )
 
     if not mission_path.is_file():
-        missing_files.append("mission.py")
+        missing_files.append(
+            "mission.py"
+        )
 
     if missing_files:
         raise RuntimeError(
@@ -349,22 +498,25 @@ def verify_manifest(
     try:
         manifest = json.loads(
             manifest_path.read_text(
-                encoding="utf-8"
+                encoding="utf-8",
             )
         )
     except json.JSONDecodeError as exc:
         raise RuntimeError(
-            f"manifest.json contains invalid JSON: "
+            "manifest.json contains invalid JSON: "
             f"{exc}"
         ) from exc
+
     except OSError as exc:
         raise RuntimeError(
-            f"Could not read manifest.json: {exc}"
+            "Could not read manifest.json: "
+            f"{exc}"
         ) from exc
 
     if not isinstance(manifest, dict):
         raise RuntimeError(
-            "manifest.json must contain a JSON object"
+            "manifest.json must contain "
+            "a JSON object"
         )
 
     required_fields = (
@@ -393,11 +545,12 @@ def verify_mission_python(
 ) -> None:
     try:
         source = mission_path.read_text(
-            encoding="utf-8"
+            encoding="utf-8",
         )
     except OSError as exc:
         raise RuntimeError(
-            f"Could not read mission.py: {exc}"
+            "Could not read mission.py: "
+            f"{exc}"
         ) from exc
 
     if not source.strip():
@@ -410,9 +563,10 @@ def verify_mission_python(
             source,
             filename=str(mission_path),
         )
+
     except SyntaxError as exc:
         raise RuntimeError(
-            f"mission.py contains invalid Python: "
+            "mission.py contains invalid Python: "
             f"{exc.msg} at line {exc.lineno}"
         ) from exc
 
@@ -425,16 +579,46 @@ def run_mission_agent(
     mission_request: str,
     candidate_name: str,
 ) -> Path:
+    read_files: set[str] = set()
+    written_files: set[str] = set()
+
+    required_reads = {
+        (
+            "agents/references/"
+            "mission_contract.md"
+        ),
+        (
+            "agents/references/"
+            "sdk_contract.md"
+        ),
+    }
+
+    if (
+        "optical flow"
+        in mission_request.lower()
+    ):
+        required_reads.add(
+            (
+                "agents/references/"
+                "optical_flow_example.md"
+            )
+        )
+
+    required_files = {
+        "manifest.json",
+        "mission.py",
+    }
+
     candidate_directory = safe_candidate_path(
         candidate_name
     )
 
     if candidate_directory.exists():
         raise RuntimeError(
-            f"Candidate already exists: "
+            "Candidate already exists: "
             f"candidates/{candidate_name}"
         )
-    
+
     messages: list[Any] = build_messages(
         mission_request=mission_request,
         candidate_name=candidate_name,
@@ -448,23 +632,86 @@ def run_mission_agent(
     ):
         print(
             f"Agent round "
-            f"{round_number}/{MAX_TOOL_ROUNDS}"
+            f"{round_number}/"
+            f"{MAX_TOOL_ROUNDS}"
         )
 
-        response = call_model(messages)
+        workflow_status = (
+            build_workflow_status(
+                required_reads=required_reads,
+                read_files=read_files,
+                required_files=required_files,
+                written_files=written_files,
+            )
+        )
 
-        # The assistant message contains the tool calls.
-        messages.append(response.message)
+        messages.append(
+            {
+                "role": "user",
+                "content": workflow_status,
+            }
+        )
+
+        response = call_model(
+            messages
+        )
+
+        messages.append(
+            response.message
+        )
 
         tool_calls = (
-            response.message.tool_calls or []
+            response.message.tool_calls
+            or []
         )
 
         if not tool_calls:
-            print(
-                "Model finished without requesting "
-                "another tool."
+            unread_files = (
+                required_reads
+                - read_files
             )
+
+            missing_files = (
+                required_files
+                - written_files
+            )
+
+            if (
+                unread_files
+                or missing_files
+            ):
+                print(
+                    "Model responded without "
+                    "a tool before completing "
+                    "the workflow."
+                )
+
+                messages.append(
+                    {
+                        "role": "user",
+                        "content": (
+                            "Mission generation is "
+                            "incomplete. Follow the "
+                            "workflow status and call "
+                            "the required tool. Do not "
+                            "respond with plain text."
+                        ),
+                    }
+                )
+
+                messages = (
+                    trim_working_memory(
+                        messages
+                    )
+                )
+
+                continue
+
+            print(
+                "Model completed after writing "
+                "the required files."
+            )
+
             break
 
         for tool_call in tool_calls:
@@ -472,6 +719,7 @@ def run_mission_agent(
                 "RAW TOOL CALL:",
                 tool_call.model_dump(),
             )
+
             total_tool_calls += 1
 
             tool_name = (
@@ -481,9 +729,12 @@ def run_mission_agent(
             arguments = dict(
                 tool_call.function.arguments
             )
-            arguments = normalize_tool_arguments(
-                tool_name,
-                arguments
+
+            arguments = (
+                normalize_tool_arguments(
+                    tool_name,
+                    arguments,
+                )
             )
 
             print(
@@ -494,7 +745,13 @@ def run_mission_agent(
                 result = execute_tool(
                     tool_name,
                     arguments,
-                    candidate_name=candidate_name,
+                    candidate_name=(
+                        candidate_name
+                    ),
+                    read_files=read_files,
+                    written_files=(
+                        written_files
+                    ),
                 )
 
                 tool_message = (
@@ -523,31 +780,33 @@ def run_mission_agent(
                     )
                 )
 
-            messages.append(tool_message)
+            messages.append(
+                tool_message
+            )
 
-        # Trim after a full tool round so the newest
-        # assistant calls and tool results stay together.
         messages = trim_working_memory(
             messages
         )
 
     else:
         raise RuntimeError(
-            "Agent reached the maximum number "
-            "of tool rounds"
+            "Agent reached the maximum "
+            "number of tool rounds"
         )
-    required_files = {
-        "manifest.json",
-        "mission.py",
-    }
 
-    missing_files = required_files - written_files
+    missing_files = (
+        required_files
+        - written_files
+    )
 
     if missing_files:
         raise RuntimeError(
             "Model did not write required files: "
-            + ", ".join(sorted(missing_files))
+            + ", ".join(
+                sorted(missing_files)
+            )
         )
+
     candidate_directory = (
         verify_candidate_files(
             candidate_name
@@ -555,7 +814,7 @@ def run_mission_agent(
     )
 
     print(
-        f"Candidate verified after "
+        "Candidate verified after "
         f"{total_tool_calls} tool calls."
     )
 
