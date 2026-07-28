@@ -13,11 +13,11 @@ import numpy as np
 
 ## Capturing and loading an image
 
-The CubeSat SDK returns a file path.
+The CubeSat SDK returns a `CaptureResponse` object. Its `filename` field contains the captured image path.
 
 ```python
 capture = sat.camera.capture()
-image_path = capture["path"]
+image_path = capture.filename
 
 frame = cv2.imread(image_path)
 ```

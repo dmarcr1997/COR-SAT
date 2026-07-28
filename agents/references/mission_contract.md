@@ -277,10 +277,10 @@ Use the SDK to capture an image:
 capture = sat.camera.capture()
 ```
 
-Use the returned path for local processing:
+Use the returned filename for local processing:
 
 ```python
-image = cv2.imread(capture["path"])
+image = cv2.imread(capture.filename)
 ```
 
 Check that loading succeeded:
@@ -288,7 +288,7 @@ Check that loading succeeded:
 ```python
 if image is None:
     raise RuntimeError(
-        f"Could not load image: {capture['path']}"
+        f"Could not load image: {capture.filename}"
     )
 ```
 
