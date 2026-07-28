@@ -6,7 +6,7 @@ Required order:
 
 1. Read agents/references/mission_contract.md
 2. Read agents/references/sdk_contract.md
-3. If the mission requests optical flow, read agents/references/oflow_example.md
+3. If the mission requests optical flow, read agents/references/optical_flow_example.md
 4. Write manifest.json
 5. Write mission.py
 6. Stop
