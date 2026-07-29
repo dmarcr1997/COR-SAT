@@ -16,6 +16,11 @@ from agents.tools.tools import (
     write_mission_file,
 )
 
+from runner.validator import (
+    MissionValidationError,
+    validate_mission,
+)
+
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
@@ -472,72 +477,26 @@ def verify_candidate_files(
             + ", ".join(missing_files)
         )
 
-    manifest = verify_manifest(
-        manifest_path
-    )
+    try:
+        validate_mission(
+            candidate_directory
+        )
+    except MissionValidationError as exc:
+        formatted_issues = "\n".join(
+            f"- {issue.format()}"
+            for issue in exc.issues
+        )
 
+        raise RuntimeError(
+            "Generated mission failed validation:\n"
+            f"{formatted_issues}"
+        ) from exc
     verify_mission_python(
         mission_path
     )
-
-    expected_entrypoint = manifest.get(
-        "entrypoint"
-    )
-
-    if expected_entrypoint != "mission.py":
-        raise RuntimeError(
-            "Manifest entrypoint must be mission.py"
-        )
-
     return candidate_directory
 
 
-def verify_manifest(
-    manifest_path: Path,
-) -> dict[str, Any]:
-    try:
-        manifest = json.loads(
-            manifest_path.read_text(
-                encoding="utf-8",
-            )
-        )
-    except json.JSONDecodeError as exc:
-        raise RuntimeError(
-            "manifest.json contains invalid JSON: "
-            f"{exc}"
-        ) from exc
-
-    except OSError as exc:
-        raise RuntimeError(
-            "Could not read manifest.json: "
-            f"{exc}"
-        ) from exc
-
-    if not isinstance(manifest, dict):
-        raise RuntimeError(
-            "manifest.json must contain "
-            "a JSON object"
-        )
-
-    required_fields = (
-        "name",
-        "version",
-        "entrypoint",
-    )
-
-    for field in required_fields:
-        value = manifest.get(field)
-
-        if (
-            not isinstance(value, str)
-            or not value.strip()
-        ):
-            raise RuntimeError(
-                f"Manifest field '{field}' must "
-                "be a non-empty string"
-            )
-
-    return manifest
 
 
 def verify_mission_python(

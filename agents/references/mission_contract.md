@@ -39,34 +39,64 @@ The filename must be exactly:
 manifest.json
 ```
 
-Minimum valid content:
+The manifest is runtime configuration, not mission documentation.
+
+It must contain only fields supported by the mission manifest schema.
+
+Allowed top-level fields:
+
+```text
+schema_version
+name
+version
+entrypoint
+permissions
+configuration
+```
+
+Do not add descriptive fields such as:
+
+```text
+mission_name
+description
+required_sdk_calls
+processing_steps
+dependencies
+constraints
+```
+
+A camera mission with a fixed capture count should use this shape:
 
 ```json
 {
+  "schema_version": 1,
   "name": "generated-mission",
   "version": "0.1.0",
-  "entrypoint": "mission.py"
+  "entrypoint": "mission.py",
+  "permissions": ["camera.capture"],
+  "configuration": {
+    "capture_interval_seconds": 1,
+    "request_timeout_seconds": 30,
+    "maximum_captures": 20
+  }
 }
 ```
 
 Requirements:
 
-- `name` must be a non-empty string
-- `version` must be a non-empty string
+- `schema_version` must be `1`
+- `name` must use lowercase letters, numbers, and hyphens
+- `version` must use semantic version format such as `0.1.0`
 - `entrypoint` must be exactly `mission.py`
+- `permissions` may contain only approved permission strings
+- camera missions must include `camera.capture`
+- `configuration.capture_interval_seconds` must match the mission request
+- `configuration.maximum_captures` must match the requested capture count
+- `configuration.request_timeout_seconds` must be greater than zero and no more than 300
+- no additional top-level properties are allowed
 - content must be valid JSON
 - JSON must not contain comments
 - content must not contain Markdown fences
-- the filename must not contain a directory path
-
-Do not replace `entrypoint` with:
-
-```text
-mission
-file
-script
-description
-```
 
 ## mission.py
 

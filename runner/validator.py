@@ -289,7 +289,7 @@ def validate_mission(mission_directory: Path) -> ValidatedMission:
 
 
 def print_success(result: ValidatedMission) -> None:
-    permissions = result.manifest["permissions"]
+    permissions = result.manifest.get("permissions", [])
 
     permission_text = (
         ", ".join(permissions)
