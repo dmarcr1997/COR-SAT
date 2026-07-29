@@ -148,6 +148,10 @@ def behavior_failures(
         failures.append(f"Expected {requirements.optical_flow_outputs} output files, got {len(record.output_files)}")
     if requirements.uses_optical_flow and not calls(source, "cv2.calcOpticalFlowPyrLK"):
         failures.append("Sparse Lucas-Kanade optical flow was not used")
+    if requirements.uses_optical_flow and record.optical_flow_count != requirements.optical_flow_outputs:
+        failures.append("Optical flow was not calculated for every frame pair")
+    if requirements.uses_optical_flow and not has_groups_of_five(source):
+        failures.append("Frames were not split into groups of five")
     if requirements.require_shutdown_handling and not calls(source, "signal.signal"):
         failures.append("Shutdown signal handling is missing")
     return failures
@@ -156,6 +160,16 @@ def behavior_failures(
 def calls(source: str, name: str) -> bool:
     tree = ast.parse(source)
     return any(dotted_name(node.func) == name for node in ast.walk(tree) if isinstance(node, ast.Call))
+
+
+def has_groups_of_five(source: str) -> bool:
+    tree = ast.parse(source)
+    return any(
+        isinstance(node, ast.Call)
+        and dotted_name(node.func) == "range"
+        and any(isinstance(argument, ast.Constant) and argument.value == 5 for argument in node.args)
+        for node in ast.walk(tree)
+    )
 
 
 def dotted_name(node: ast.AST) -> str | None:
