@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import sys
 
-from agents.agent_loop import run_mission_agent
+from agents.pipeline import run_mission_pipeline
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -29,7 +29,7 @@ def main() -> int:
     args = build_parser().parse_args()
 
     try:
-        run_mission_agent(
+        run_mission_pipeline(
             mission_request=args.request,
             candidate_name=args.candidate,
         )

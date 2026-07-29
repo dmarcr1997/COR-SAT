@@ -3,8 +3,13 @@ from __future__ import annotations
 import ast
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
+from pathlib import Path
 
 from agents.evaluator import EvaluationResult, EvaluationRun, execute_mission
+from agents.generator import SourceGenerator, generate_mission_source, generate_two_candidates
+from agents.packager import create_mission_package
+from agents.repair import repair_mission_source
+from agents.requirements import parse_mission_request
 from agents.requirements import MissionRequirements
 
 
@@ -61,6 +66,68 @@ def select_candidate(
             best_failed = evaluation
 
     return CandidateSelection(None, best_failed, evaluations)
+
+
+def run_mission_pipeline(
+    mission_request: str,
+    candidate_name: str,
+    *,
+    generate_source: SourceGenerator = generate_mission_source,
+    repair_source: Callable[..., str] = repair_mission_source,
+    package_creator: Callable[[str, str, MissionRequirements], Path] = create_mission_package,
+) -> Path:
+    """Generate, evaluate, repair once if needed, and package a mission."""
+    requirements = parse_mission_request(mission_request)
+    selection = generate_and_select(requirements, mission_request, generate_source)
+    if selection.winner:
+        return package_creator(candidate_name, selection.winner.candidate.source, requirements)
+
+    if selection.best_failed is None:
+        raise RuntimeError("Both mission generators failed without a candidate")
+
+    best_failed = selection.best_failed
+    repaired_source = repair_source(
+        mission_request,
+        best_failed.candidate.source,
+        best_failed.run.result.failures,
+        include_optical_flow=requirements.uses_optical_flow,
+    )
+    repaired_run = evaluate_candidate(repaired_source, requirements)
+    if not repaired_run.result.passed:
+        raise RuntimeError("Mission repair failed: " + "; ".join(repaired_run.result.failures))
+    return package_creator(candidate_name, repaired_source, requirements)
+
+
+def generate_and_select(
+    requirements: MissionRequirements,
+    mission_request: str,
+    generate_source: SourceGenerator,
+) -> CandidateSelection:
+    evaluations: list[CandidateEvaluation] = []
+    winner: CandidateEvaluation | None = None
+    best_failed: CandidateEvaluation | None = None
+
+    def evaluate_generated(variant: str, source: str) -> bool:
+        nonlocal winner, best_failed
+        evaluation = CandidateEvaluation(
+            CandidateSource(f"candidate-{variant}", source),
+            evaluate_candidate(source, requirements),
+        )
+        evaluations.append(evaluation)
+        if evaluation.run.result.passed:
+            winner = evaluation
+            return True
+        if best_failed is None or evaluation.run.result.score > best_failed.run.result.score:
+            best_failed = evaluation
+        return False
+
+    generate_two_candidates(
+        mission_request,
+        include_optical_flow=requirements.uses_optical_flow,
+        generate_source=generate_source,
+        on_candidate=evaluate_generated,
+    )
+    return CandidateSelection(winner, best_failed, evaluations)
 
 
 def behavior_failures(

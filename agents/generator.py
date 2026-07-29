@@ -14,6 +14,7 @@ MODEL_NAME = "qwen3:4b-instruct"
 PromptVariant = Literal["minimal", "robust"]
 ModelCall = Callable[[list[dict[str, str]]], str]
 SourceGenerator = Callable[..., str]
+CandidateConsumer = Callable[[PromptVariant, str], bool]
 
 
 def generate_mission_source(
@@ -38,10 +39,12 @@ def generate_two_candidates(
     *,
     include_optical_flow: bool,
     generate_source: SourceGenerator = generate_mission_source,
+    on_candidate: CandidateConsumer | None = None,
 ) -> dict[PromptVariant, str]:
     """Generate independent minimal and robust candidates concurrently."""
     variants: tuple[PromptVariant, PromptVariant] = ("minimal", "robust")
-    with ThreadPoolExecutor(max_workers=2) as executor:
+    executor = ThreadPoolExecutor(max_workers=2)
+    try:
         futures = {
             executor.submit(
                 generate_source,
@@ -53,7 +56,13 @@ def generate_two_candidates(
         }
         results: dict[PromptVariant, str] = {}
         for future in as_completed(futures):
-            results[futures[future]] = future.result()
+            variant = futures[future]
+            source = future.result()
+            results[variant] = source
+            if on_candidate and on_candidate(variant, source):
+                break
+    finally:
+        executor.shutdown(wait=False, cancel_futures=True)
     return results
 
 

@@ -1,7 +1,10 @@
 import unittest
+import tempfile
+from pathlib import Path
 
 from agents.evaluator import EvaluationResult, EvaluationRun, empty_record
-from agents.pipeline import CandidateSource, select_candidate
+from agents.packager import create_mission_package
+from agents.pipeline import CandidateSource, run_mission_pipeline, select_candidate
 from agents.requirements import parse_mission_request
 
 
@@ -45,6 +48,46 @@ class CandidateSelectionTests(unittest.TestCase):
 
         self.assertEqual(requirements.capture_count, 5)
         self.assertEqual(requirements.interval_seconds, 2.0)
+
+    def test_pipeline_generates_evaluates_and_packages(self) -> None:
+        source = "from sat_sdk import SatClient\nSatClient().camera.capture()\n"
+
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            package = run_mission_pipeline(
+                "Capture one image.",
+                "candidate-001",
+                generate_source=lambda *_args, **_kwargs: source,
+                package_creator=lambda name, code, requirements: create_mission_package(
+                    name,
+                    code,
+                    requirements,
+                    candidates_root=Path(temporary_directory),
+                ),
+            )
+
+            self.assertTrue(Path(package, "mission.py").is_file())
+            self.assertTrue(Path(package, "manifest.json").is_file())
+
+    def test_pipeline_repairs_the_best_failed_candidate_once(self) -> None:
+        repaired = "from sat_sdk import SatClient\nSatClient().camera.capture()\n"
+        repair_calls: list[list[str]] = []
+
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            package = run_mission_pipeline(
+                "Capture one image.",
+                "candidate-001",
+                generate_source=lambda *_args, **_kwargs: "print('missing capture')\n",
+                repair_source=lambda _request, _source, failures, **_kwargs: repair_calls.append(failures) or repaired,
+                package_creator=lambda name, code, requirements: create_mission_package(
+                    name,
+                    code,
+                    requirements,
+                    candidates_root=Path(temporary_directory),
+                ),
+            )
+
+            self.assertTrue(Path(package, "mission.py").is_file())
+        self.assertEqual(len(repair_calls), 1)
 
 
 if __name__ == "__main__":

@@ -48,6 +48,19 @@ class GeneratorTests(unittest.TestCase):
 
         self.assertEqual(candidates, {"minimal": "# minimal\n", "robust": "# robust\n"})
 
+    def test_stops_after_consumer_accepts_a_candidate(self) -> None:
+        consumed: list[str] = []
+
+        candidates = generate_two_candidates(
+            "Capture one image.",
+            include_optical_flow=False,
+            generate_source=lambda _request, variant, **_: f"# {variant}\n",
+            on_candidate=lambda variant, _source: consumed.append(variant) or True,
+        )
+
+        self.assertEqual(len(consumed), 1)
+        self.assertEqual(set(candidates), set(consumed))
+
 
 if __name__ == "__main__":
     unittest.main()
