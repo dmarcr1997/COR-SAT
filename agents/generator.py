@@ -1,0 +1,92 @@
+from __future__ import annotations
+
+from collections.abc import Callable
+from pathlib import Path
+from typing import Literal
+
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+PROMPTS = PROJECT_ROOT / "agents" / "prompts"
+REFERENCES = PROJECT_ROOT / "agents" / "references"
+MODEL_NAME = "qwen3:4b-instruct"
+
+PromptVariant = Literal["minimal", "robust"]
+ModelCall = Callable[[list[dict[str, str]]], str]
+
+
+def generate_mission_source(
+    mission_request: str,
+    variant: PromptVariant,
+    *,
+    include_optical_flow: bool = False,
+    model_call: ModelCall | None = None,
+) -> str:
+    """Generate one complete mission.py source file without model tools."""
+    prompt = build_generation_prompt(
+        mission_request,
+        variant,
+        include_optical_flow=include_optical_flow,
+    )
+    source = (model_call or call_ollama)(prompt)
+    return strip_code_fence(source)
+
+
+def build_generation_prompt(
+    mission_request: str,
+    variant: PromptVariant,
+    *,
+    include_optical_flow: bool,
+) -> list[dict[str, str]]:
+    variant_instruction = {
+        "minimal": "Use the smallest clear implementation that meets every requirement.",
+        "robust": "Prioritize shutdown handling, exact timing, and explicit error checks.",
+    }[variant]
+    references = [read_reference("sdk_contract.md")]
+    if include_optical_flow:
+        references.append(read_reference("optical_flow_example.md"))
+
+    return [
+        {"role": "system", "content": PROMPTS.joinpath("generate.md").read_text(encoding="utf-8")},
+        {
+            "role": "user",
+            "content": "\n\n".join(
+                [
+                    f"Implementation approach: {variant_instruction}",
+                    f"Mission request:\n{mission_request}",
+                    "Reference material:\n" + "\n\n".join(references),
+                ]
+            ),
+        },
+    ]
+
+
+def read_reference(filename: str) -> str:
+    return REFERENCES.joinpath(filename).read_text(encoding="utf-8")
+
+
+def call_ollama(messages: list[dict[str, str]]) -> str:
+    try:
+        from ollama import chat
+    except ModuleNotFoundError as exc:
+        raise RuntimeError("Ollama Python package is required for mission generation") from exc
+
+    response = chat(
+        model=MODEL_NAME,
+        messages=messages,
+        stream=False,
+        think=False,
+        options={"temperature": 0.2, "top_p": 0.9},
+        keep_alive="10m",
+    )
+    return response.message.content
+
+
+def strip_code_fence(source: str) -> str:
+    stripped = source.strip()
+    if not stripped.startswith("```"):
+        return stripped + "\n"
+
+    lines = stripped.splitlines()
+    if len(lines) >= 2 and lines[-1].strip() == "```":
+        return "\n".join(lines[1:-1]).strip() + "\n"
+    return stripped + "\n"
