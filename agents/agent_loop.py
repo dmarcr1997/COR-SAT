@@ -15,7 +15,6 @@ from agents.tools.tools import (
     safe_candidate_path,
     write_mission_file,
 )
-
 from runner.validator import (
     MissionValidationError,
     validate_mission,
@@ -64,14 +63,16 @@ Use the workflow status provided by the controller.
 
 Read every required reference exactly once.
 
+The controller has already created manifest.json.
+
 After all required references are read:
 
-1. Write manifest.json
-2. Write mission.py
-3. Stop
+1. Write mission.py
+2. Stop
 
+Do not write or modify manifest.json.
 Do not print file contents.
-Do not respond with plain text while required files are missing.
+Do not respond with plain text while mission.py is missing.
 """.strip()
 
     return [
@@ -92,7 +93,9 @@ def message_size(message: Any) -> int:
     """
 
     if hasattr(message, "model_dump_json"):
-        return len(message.model_dump_json())
+        return len(
+            message.model_dump_json()
+        )
 
     try:
         return len(
@@ -135,13 +138,20 @@ def trim_working_memory(
     kept_recent_messages: list[Any] = []
     used_size = 0
 
-    for message in reversed(recent_messages):
+    for message in reversed(
+        recent_messages
+    ):
         size = message_size(message)
 
-        if used_size + size > remaining_budget:
+        if (
+            used_size + size
+            > remaining_budget
+        ):
             break
 
-        kept_recent_messages.append(message)
+        kept_recent_messages.append(
+            message
+        )
         used_size += size
 
     kept_recent_messages.reverse()
@@ -159,7 +169,8 @@ def build_workflow_status(
     written_files: set[str],
 ) -> str:
     """
-    Tell the model exactly where it is in the workflow.
+    Tell the model exactly where it is
+    in the workflow.
     """
 
     lines = [
@@ -186,7 +197,9 @@ def build_workflow_status(
         ]
     )
 
-    for filename in sorted(required_files):
+    for filename in sorted(
+        required_files
+    ):
         status = (
             "written"
             if filename in written_files
@@ -198,17 +211,21 @@ def build_workflow_status(
         )
 
     unread_files = (
-        required_reads - read_files
+        required_reads
+        - read_files
     )
 
     missing_files = (
-        required_files - written_files
+        required_files
+        - written_files
     )
 
     lines.append("")
 
     if unread_files:
-        next_file = sorted(unread_files)[0]
+        next_file = sorted(
+            unread_files
+        )[0]
 
         lines.extend(
             [
@@ -217,43 +234,65 @@ def build_workflow_status(
                     "Call read_mission_file for "
                     f"{next_file}."
                 ),
-                "Do not write output files yet.",
-                "Do not respond with plain text.",
+                (
+                    "Do not write output files "
+                    "yet."
+                ),
+                (
+                    "Do not respond with plain "
+                    "text."
+                ),
             ]
         )
 
     elif "manifest.json" in missing_files:
         lines.extend(
             [
-                "All required references have been read.",
-                "Next required action:",
+                "Controller error:",
                 (
-                    "Call write_mission_file for "
+                    "manifest.json has not been "
+                    "created."
+                ),
+                (
+                    "Do not attempt to create "
                     "manifest.json."
                 ),
-                "Do not read any more files.",
-                "Do not respond with plain text.",
             ]
         )
 
     elif "mission.py" in missing_files:
         lines.extend(
             [
-                "manifest.json has been written.",
+                (
+                    "All required references "
+                    "have been read."
+                ),
+                (
+                    "manifest.json was created "
+                    "by the controller."
+                ),
                 "Next required action:",
                 (
                     "Call write_mission_file for "
                     "mission.py."
                 ),
-                "Do not read any more files.",
-                "Do not respond with plain text.",
+                (
+                    "Do not read any more files."
+                ),
+                (
+                    "Do not respond with plain "
+                    "text."
+                ),
             ]
         )
 
     else:
         lines.extend(
             [
-                "Both required files have been written.",
+                (
+                    "The mission package files "
+                    "are complete."
+                ),
                 (
                     "Respond exactly: "
                     "Mission candidate created."
@@ -265,14 +304,115 @@ def build_workflow_status(
 
 
 # ============================================================
+# Manifest generation
+# ============================================================
+
+def build_manifest(
+    mission_request: str,
+) -> dict[str, Any]:
+    request_lower = (
+        mission_request.lower()
+    )
+
+    permissions: list[str] = []
+
+    if (
+        "capture" in request_lower
+        or "image" in request_lower
+        or "camera" in request_lower
+    ):
+        permissions.append(
+            "camera.capture"
+        )
+
+    maximum_captures: int | None = None
+
+    if "20 images" in request_lower:
+        maximum_captures = 20
+
+    elif "twenty images" in request_lower:
+        maximum_captures = 20
+
+    elif "five images" in request_lower:
+        maximum_captures = 5
+
+    elif "5 images" in request_lower:
+        maximum_captures = 5
+
+    elif "one image" in request_lower:
+        maximum_captures = 1
+
+    elif "1 image" in request_lower:
+        maximum_captures = 1
+
+    capture_interval_seconds = 1.0
+
+    if (
+        "two-second" in request_lower
+        or "two second" in request_lower
+        or "2-second" in request_lower
+        or "2 second" in request_lower
+    ):
+        capture_interval_seconds = 2.0
+
+    elif (
+        "one-second" in request_lower
+        or "one second" in request_lower
+        or "1-second" in request_lower
+        or "1 second" in request_lower
+    ):
+        capture_interval_seconds = 1.0
+
+    return {
+        "schema_version": 1,
+        "name": "generated-mission",
+        "version": "0.1.0",
+        "entrypoint": "mission.py",
+        "permissions": permissions,
+        "configuration": {
+            "capture_interval_seconds": (
+                capture_interval_seconds
+            ),
+            "request_timeout_seconds": 30,
+            "maximum_captures": (
+                maximum_captures
+            ),
+        },
+    }
+
+
+def write_generated_manifest(
+    mission_request: str,
+    candidate_name: str,
+) -> None:
+    manifest = build_manifest(
+        mission_request
+    )
+
+    write_mission_file(
+        candidate_name=candidate_name,
+        filename="manifest.json",
+        content=(
+            json.dumps(
+                manifest,
+                indent=2,
+            )
+            + "\n"
+        ),
+    )
+
+
+# ============================================================
 # Ollama
 # ============================================================
 
 def call_model(
     messages: list[Any],
 ) -> ChatResponse:
-    trimmed_messages = trim_working_memory(
-        messages
+    trimmed_messages = (
+        trim_working_memory(
+            messages
+        )
     )
 
     return chat(
@@ -310,9 +450,10 @@ def execute_tool(
                 "ok": False,
                 "code": "FILE_ALREADY_READ",
                 "message": (
-                    f"{relative_path} was already read. "
-                    "Do not read it again. Continue to "
-                    "the next required action."
+                    f"{relative_path} was "
+                    "already read. Do not read "
+                    "it again. Continue to the "
+                    "next required action."
                 ),
             }
 
@@ -320,7 +461,9 @@ def execute_tool(
             relative_path=relative_path,
         )
 
-        read_files.add(relative_path)
+        read_files.add(
+            relative_path
+        )
 
         return result
 
@@ -334,7 +477,26 @@ def execute_tool(
         )
 
     if tool_name == "write_mission_file":
-        filename = arguments["filename"]
+        filename = arguments[
+            "filename"
+        ]
+
+        if filename == "manifest.json":
+            raise MissionToolError(
+                (
+                    "manifest.json is "
+                    "controller-managed. "
+                    "Write mission.py instead."
+                )
+            )
+
+        if filename != "mission.py":
+            raise MissionToolError(
+                (
+                    "The mission builder may "
+                    "only write mission.py."
+                )
+            )
 
         result = write_mission_file(
             candidate_name=candidate_name,
@@ -342,7 +504,9 @@ def execute_tool(
             content=arguments["content"],
         )
 
-        written_files.add(filename)
+        written_files.add(
+            filename
+        )
 
         return result
 
@@ -355,7 +519,8 @@ def format_tool_result(
     result: Any,
 ) -> str:
     """
-    Convert tool output into compact text for Qwen.
+    Convert tool output into compact text
+    for Qwen.
     """
 
     if isinstance(result, str):
@@ -367,7 +532,10 @@ def format_tool_result(
             default=str,
         )
 
-    if len(text) <= MAX_TOOL_RESULT_CHARS:
+    if (
+        len(text)
+        <= MAX_TOOL_RESULT_CHARS
+    ):
         return text
 
     removed_characters = (
@@ -376,7 +544,9 @@ def format_tool_result(
     )
 
     return (
-        text[:MAX_TOOL_RESULT_CHARS]
+        text[
+            :MAX_TOOL_RESULT_CHARS
+        ]
         + "\n\n"
         + (
             "[Tool result truncated: "
@@ -412,14 +582,19 @@ def normalize_tool_arguments(
     tool_name: str,
     arguments: dict[str, Any],
 ) -> dict[str, Any]:
-    if tool_name != "write_mission_file":
+    if (
+        tool_name
+        != "write_mission_file"
+    ):
         return arguments
 
     normalized = dict(arguments)
 
     if "filename" not in normalized:
-        possible_filename = normalized.get(
-            "candidate_name"
+        possible_filename = (
+            normalized.get(
+                "candidate_name"
+            )
         )
 
         if possible_filename in {
@@ -445,8 +620,10 @@ def normalize_tool_arguments(
 def verify_candidate_files(
     candidate_name: str,
 ) -> Path:
-    candidate_directory = safe_candidate_path(
-        candidate_name
+    candidate_directory = (
+        safe_candidate_path(
+            candidate_name
+        )
     )
 
     manifest_path = (
@@ -473,14 +650,19 @@ def verify_candidate_files(
 
     if missing_files:
         raise RuntimeError(
-            "Model finished without creating: "
-            + ", ".join(missing_files)
+            (
+                "Mission package is missing: "
+                + ", ".join(
+                    missing_files
+                )
+            )
         )
 
     try:
         validate_mission(
             candidate_directory
         )
+
     except MissionValidationError as exc:
         formatted_issues = "\n".join(
             f"- {issue.format()}"
@@ -488,28 +670,36 @@ def verify_candidate_files(
         )
 
         raise RuntimeError(
-            "Generated mission failed validation:\n"
-            f"{formatted_issues}"
+            (
+                "Generated mission failed "
+                "validation:\n"
+                f"{formatted_issues}"
+            )
         ) from exc
+
     verify_mission_python(
         mission_path
     )
+
     return candidate_directory
-
-
 
 
 def verify_mission_python(
     mission_path: Path,
 ) -> None:
     try:
-        source = mission_path.read_text(
-            encoding="utf-8",
+        source = (
+            mission_path.read_text(
+                encoding="utf-8",
+            )
         )
+
     except OSError as exc:
         raise RuntimeError(
-            "Could not read mission.py: "
-            f"{exc}"
+            (
+                "Could not read mission.py: "
+                f"{exc}"
+            )
         ) from exc
 
     if not source.strip():
@@ -520,13 +710,19 @@ def verify_mission_python(
     try:
         ast.parse(
             source,
-            filename=str(mission_path),
+            filename=str(
+                mission_path
+            ),
         )
 
     except SyntaxError as exc:
         raise RuntimeError(
-            "mission.py contains invalid Python: "
-            f"{exc.msg} at line {exc.lineno}"
+            (
+                "mission.py contains invalid "
+                "Python: "
+                f"{exc.msg} at line "
+                f"{exc.lineno}"
+            )
         ) from exc
 
 
@@ -568,19 +764,44 @@ def run_mission_agent(
         "mission.py",
     }
 
-    candidate_directory = safe_candidate_path(
-        candidate_name
+    candidate_directory = (
+        safe_candidate_path(
+            candidate_name
+        )
     )
 
     if candidate_directory.exists():
         raise RuntimeError(
-            "Candidate already exists: "
-            f"candidates/{candidate_name}"
+            (
+                "Candidate already exists: "
+                f"candidates/"
+                f"{candidate_name}"
+            )
         )
 
-    messages: list[Any] = build_messages(
+    write_generated_manifest(
         mission_request=mission_request,
         candidate_name=candidate_name,
+    )
+
+    written_files.add(
+        "manifest.json"
+    )
+
+    print(
+        "Controller created "
+        "manifest.json."
+    )
+
+    messages: list[Any] = (
+        build_messages(
+            mission_request=(
+                mission_request
+            ),
+            candidate_name=(
+                candidate_name
+            ),
+        )
     )
 
     total_tool_calls = 0
@@ -597,17 +818,25 @@ def run_mission_agent(
 
         workflow_status = (
             build_workflow_status(
-                required_reads=required_reads,
+                required_reads=(
+                    required_reads
+                ),
                 read_files=read_files,
-                required_files=required_files,
-                written_files=written_files,
+                required_files=(
+                    required_files
+                ),
+                written_files=(
+                    written_files
+                ),
             )
         )
 
         messages.append(
             {
                 "role": "user",
-                "content": workflow_status,
+                "content": (
+                    workflow_status
+                ),
             }
         )
 
@@ -640,20 +869,23 @@ def run_mission_agent(
                 or missing_files
             ):
                 print(
-                    "Model responded without "
-                    "a tool before completing "
-                    "the workflow."
+                    (
+                        "Model responded without "
+                        "a tool before completing "
+                        "the workflow."
+                    )
                 )
 
                 messages.append(
                     {
                         "role": "user",
                         "content": (
-                            "Mission generation is "
-                            "incomplete. Follow the "
-                            "workflow status and call "
-                            "the required tool. Do not "
-                            "respond with plain text."
+                            "Mission generation "
+                            "is incomplete. Follow "
+                            "the workflow status "
+                            "and call the required "
+                            "tool. Do not respond "
+                            "with plain text."
                         ),
                     }
                 )
@@ -667,8 +899,10 @@ def run_mission_agent(
                 continue
 
             print(
-                "Model completed after writing "
-                "the required files."
+                (
+                    "Model completed after "
+                    "writing mission.py."
+                )
             )
 
             break
@@ -707,7 +941,9 @@ def run_mission_agent(
                     candidate_name=(
                         candidate_name
                     ),
-                    read_files=read_files,
+                    read_files=(
+                        read_files
+                    ),
                     written_files=(
                         written_files
                     ),
@@ -743,14 +979,18 @@ def run_mission_agent(
                 tool_message
             )
 
-        messages = trim_working_memory(
-            messages
+        messages = (
+            trim_working_memory(
+                messages
+            )
         )
 
     else:
         raise RuntimeError(
-            "Agent reached the maximum "
-            "number of tool rounds"
+            (
+                "Agent reached the maximum "
+                "number of tool rounds"
+            )
         )
 
     missing_files = (
@@ -760,9 +1000,14 @@ def run_mission_agent(
 
     if missing_files:
         raise RuntimeError(
-            "Model did not write required files: "
-            + ", ".join(
-                sorted(missing_files)
+            (
+                "Mission package is missing "
+                "required files: "
+                + ", ".join(
+                    sorted(
+                        missing_files
+                    )
+                )
             )
         )
 
@@ -773,8 +1018,11 @@ def run_mission_agent(
     )
 
     print(
-        "Candidate verified after "
-        f"{total_tool_calls} tool calls."
+        (
+            "Candidate verified after "
+            f"{total_tool_calls} "
+            "model tool calls."
+        )
     )
 
     return candidate_directory
