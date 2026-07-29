@@ -106,6 +106,8 @@ def find_safety_failures(tree: ast.AST) -> list[str]:
                 failures.append(f"Forbidden operation: {name}")
             if name == "cv2.VideoCapture":
                 failures.append("Forbidden operation: cv2.VideoCapture")
+            if writes_outside_outputs(node):
+                failures.append("Mission writes outside outputs/")
 
     return sorted(set(failures))
 
@@ -164,6 +166,47 @@ def dotted_name(node: ast.AST) -> str | None:
     if isinstance(node, ast.Attribute):
         parent = dotted_name(node.value)
         return f"{parent}.{node.attr}" if parent else None
+    return None
+
+
+def writes_outside_outputs(node: ast.Call) -> bool:
+    name = dotted_name(node.func)
+    if name == "open" and writes_file(node):
+        return not approved_output_path(node.args[0] if node.args else None)
+    if name in {"os.remove", "os.unlink", "os.rename", "os.replace"}:
+        return True
+    if isinstance(node.func, ast.Attribute) and node.func.attr in {
+        "mkdir",
+        "replace",
+        "rename",
+        "unlink",
+        "write_bytes",
+        "write_text",
+    }:
+        return not approved_output_path(node.func.value)
+    return False
+
+
+def writes_file(node: ast.Call) -> bool:
+    mode = node.args[1] if len(node.args) > 1 else None
+    for keyword in node.keywords:
+        if keyword.arg == "mode":
+            mode = keyword.value
+    return isinstance(mode, ast.Constant) and isinstance(mode.value, str) and any(
+        flag in mode.value for flag in "wax+"
+    )
+
+
+def approved_output_path(node: ast.AST | None) -> bool:
+    value = path_literal(node)
+    return value is None or value == "outputs" or value.replace("\\", "/").startswith("outputs/")
+
+
+def path_literal(node: ast.AST | None) -> str | None:
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return node.value
+    if isinstance(node, ast.Call) and dotted_name(node.func) == "Path" and node.args:
+        return path_literal(node.args[0])
     return None
 
 

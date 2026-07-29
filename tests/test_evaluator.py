@@ -23,6 +23,12 @@ class EvaluatorSyntaxTests(unittest.TestCase):
         self.assertFalse(result.passed)
         self.assertEqual(result.failures, ["Forbidden operation: cv2.VideoCapture"])
 
+    def test_rejects_obvious_writes_outside_outputs(self) -> None:
+        result = evaluate_source("from pathlib import Path\nPath('mission.py').write_text('changed')\n")
+
+        self.assertFalse(result.passed)
+        self.assertEqual(result.failures, ["Mission writes outside outputs/"])
+
     def test_accepts_sdk_mission_source(self) -> None:
         result = evaluate_source(
             "from sat_sdk import SatClient\n"
