@@ -25,12 +25,14 @@ def generate_mission_source(
     model_call: ModelCall | None = None,
 ) -> str:
     """Generate one complete mission.py source file without model tools."""
+    print(f"[mission] {variant} generator: calling Ollama...", flush=True)
     prompt = build_generation_prompt(
         mission_request,
         variant,
         include_optical_flow=include_optical_flow,
     )
     source = (model_call or call_ollama)(prompt)
+    print(f"[mission] {variant} generator: source received.", flush=True)
     return strip_code_fence(source)
 
 

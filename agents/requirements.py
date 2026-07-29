@@ -31,8 +31,11 @@ def parse_mission_request(
     model_call: ModelCall | None = None,
 ) -> MissionRequirements:
     """Extract validated camera-mission requirements from natural language."""
+    print("[mission] Requesting validated requirements from Ollama...", flush=True)
     response = (model_call or call_ollama)(build_requirement_prompt(mission_request))
-    return requirements_from_json(response)
+    requirements = requirements_from_json(response)
+    print("[mission] Requirements response validated.", flush=True)
+    return requirements
 
 
 def build_requirement_prompt(mission_request: str) -> list[dict[str, str]]:

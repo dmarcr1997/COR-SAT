@@ -4,6 +4,7 @@ import ast
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from pathlib import Path
+from time import perf_counter
 
 from agents.evaluator import EvaluationResult, EvaluationRun, execute_mission
 from agents.generator import SourceGenerator, generate_mission_source, generate_two_candidates
@@ -78,25 +79,40 @@ def run_mission_pipeline(
     requirements_parser: Callable[[str], MissionRequirements] = parse_mission_request,
 ) -> Path:
     """Generate, evaluate, repair once if needed, and package a mission."""
+    started_at = perf_counter()
+    progress("Parsing natural-language mission request")
     requirements = requirements_parser(mission_request)
+    progress(
+        "Requirements accepted: "
+        f"{requirements.capture_count} captures every {requirements.interval_seconds:g}s"
+    )
+    progress("Starting minimal and robust generators")
     selection = generate_and_select(requirements, mission_request, generate_source)
     if selection.winner:
-        return package_creator(candidate_name, selection.winner.candidate.source, requirements)
+        progress("Creating and validating accepted mission package")
+        package = package_creator(candidate_name, selection.winner.candidate.source, requirements)
+        progress(f"Mission package ready in {perf_counter() - started_at:.1f}s: {package}")
+        return package
 
     if selection.best_failed is None:
         raise RuntimeError("Both mission generators failed without a candidate")
 
     best_failed = selection.best_failed
+    progress(f"Both candidates failed; repairing {best_failed.candidate.name} once")
     repaired_source = repair_source(
         mission_request,
         best_failed.candidate.source,
         best_failed.run.result.failures,
         include_optical_flow=requirements.uses_optical_flow,
     )
+    progress("Repair source received; evaluating")
     repaired_run = evaluate_candidate(repaired_source, requirements)
     if not repaired_run.result.passed:
         raise RuntimeError("Mission repair failed: " + "; ".join(repaired_run.result.failures))
-    return package_creator(candidate_name, repaired_source, requirements)
+    progress("Repair passed; creating and validating mission package")
+    package = package_creator(candidate_name, repaired_source, requirements)
+    progress(f"Mission package ready in {perf_counter() - started_at:.1f}s: {package}")
+    return package
 
 
 def generate_and_select(
@@ -110,6 +126,7 @@ def generate_and_select(
 
     def evaluate_generated(variant: str, source: str) -> bool:
         nonlocal winner, best_failed
+        progress(f"{variant} candidate received; evaluating")
         evaluation = CandidateEvaluation(
             CandidateSource(f"candidate-{variant}", source),
             evaluate_candidate(source, requirements),
@@ -117,7 +134,12 @@ def generate_and_select(
         evaluations.append(evaluation)
         if evaluation.run.result.passed:
             winner = evaluation
+            progress(f"{variant} candidate passed with score {evaluation.run.result.score}; accepting")
             return True
+        progress(
+            f"{variant} candidate failed with score {evaluation.run.result.score}: "
+            + "; ".join(evaluation.run.result.failures)
+        )
         if best_failed is None or evaluation.run.result.score > best_failed.run.result.score:
             best_failed = evaluation
         return False
@@ -180,3 +202,7 @@ def dotted_name(node: ast.AST) -> str | None:
         parent = dotted_name(node.value)
         return f"{parent}.{node.attr}" if parent else None
     return None
+
+
+def progress(message: str) -> None:
+    print(f"[mission] {message}", flush=True)

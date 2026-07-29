@@ -1,3 +1,5 @@
+import contextlib
+import io
 import unittest
 import tempfile
 from pathlib import Path
@@ -64,8 +66,9 @@ class CandidateSelectionTests(unittest.TestCase):
 
     def test_pipeline_generates_evaluates_and_packages(self) -> None:
         source = "from sat_sdk import SatClient\nSatClient().camera.capture()\n"
+        stdout = io.StringIO()
 
-        with tempfile.TemporaryDirectory() as temporary_directory:
+        with tempfile.TemporaryDirectory() as temporary_directory, contextlib.redirect_stdout(stdout):
             package = run_mission_pipeline(
                 "Capture one image.",
                 "candidate-001",
@@ -81,6 +84,9 @@ class CandidateSelectionTests(unittest.TestCase):
 
             self.assertTrue(Path(package, "mission.py").is_file())
             self.assertTrue(Path(package, "manifest.json").is_file())
+        self.assertIn("Parsing natural-language mission request", stdout.getvalue())
+        self.assertIn("candidate passed", stdout.getvalue())
+        self.assertIn("Mission package ready", stdout.getvalue())
 
     def test_pipeline_repairs_the_best_failed_candidate_once(self) -> None:
         repaired = "from sat_sdk import SatClient\nSatClient().camera.capture()\n"
