@@ -4,7 +4,7 @@ from pathlib import Path
 
 from agents.packager import create_mission_package
 from agents.pipeline import evaluate_candidate
-from agents.requirements import parse_mission_request
+from agents.requirements import MissionRequirements
 from runner.validator import validate_mission
 
 
@@ -15,6 +15,7 @@ sat = SatClient()
 capture = sat.camera.capture()
 print(capture.filename)
 """
+ONE_REQUIREMENTS = MissionRequirements(1, 1.0, False)
 
 FIVE_CAPTURES = """
 import time
@@ -29,6 +30,7 @@ for index in range(5):
     if index < 4:
         time.sleep(2)
 """
+FIVE_REQUIREMENTS = MissionRequirements(5, 2.0, True)
 
 OPTICAL_FLOW = """
 import signal
@@ -73,11 +75,12 @@ for group_start in range(0, len(frames), 5):
         cv2.imwrite(str(output_directory / f"flow_{flow_index:03d}.jpg"), image)
         flow_index += 1
 """
+OPTICAL_FLOW_REQUIREMENTS = MissionRequirements(20, 1.0, True, 4, 16, True)
 
 
 class AcceptanceMissionTests(unittest.TestCase):
     def test_capture_one_image(self) -> None:
-        run = evaluate_candidate(ONE_CAPTURE, parse_mission_request("Capture one image."))
+        run = evaluate_candidate(ONE_CAPTURE, ONE_REQUIREMENTS)
 
         self.assertTrue(run.result.passed, run.result.failures)
         self.assertEqual(run.record.capture_count, 1)
@@ -85,7 +88,7 @@ class AcceptanceMissionTests(unittest.TestCase):
     def test_capture_five_images_at_two_second_intervals(self) -> None:
         run = evaluate_candidate(
             FIVE_CAPTURES,
-            parse_mission_request("Capture five images at two-second intervals."),
+            FIVE_REQUIREMENTS,
         )
 
         self.assertTrue(run.result.passed, run.result.failures)
@@ -103,7 +106,7 @@ For each group, calculate sparse Lucas-Kanade optical flow between consecutive f
 Save sixteen JPEG optical-flow visualizations in outputs/optical-flow.
 
 Handle shutdown signals and call heartbeat during every capture."""
-        run = evaluate_candidate(OPTICAL_FLOW, parse_mission_request(request))
+        run = evaluate_candidate(OPTICAL_FLOW, OPTICAL_FLOW_REQUIREMENTS)
 
         self.assertTrue(run.result.passed, run.result.failures)
         self.assertEqual(run.record.capture_count, 20)
@@ -117,7 +120,7 @@ Handle shutdown signals and call heartbeat during every capture."""
             package = create_mission_package(
                 "optical-flow",
                 OPTICAL_FLOW,
-                parse_mission_request(request),
+                OPTICAL_FLOW_REQUIREMENTS,
                 candidates_root=Path(temporary_directory),
             )
             self.assertEqual(validate_mission(package).entrypoint_path.name, "mission.py")

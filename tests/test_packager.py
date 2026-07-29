@@ -3,13 +3,13 @@ import unittest
 from pathlib import Path
 
 from agents.packager import build_manifest, create_mission_package
-from agents.requirements import parse_mission_request
+from agents.requirements import MissionRequirements
 from runner.validator import validate_mission
 
 
 class PackagerTests(unittest.TestCase):
     def test_builds_a_valid_manifest_for_repeated_mission(self) -> None:
-        manifest = build_manifest(parse_mission_request("Capture five images at two-second intervals."))
+        manifest = build_manifest(MissionRequirements(5, 2.0, True))
 
         self.assertEqual(manifest["permissions"], ["camera.capture", "system.status"])
         self.assertEqual(manifest["configuration"]["maximum_captures"], 5)
@@ -20,7 +20,7 @@ class PackagerTests(unittest.TestCase):
             package = create_mission_package(
                 "candidate-001",
                 "from sat_sdk import SatClient\nSatClient().camera.capture()\n",
-                parse_mission_request("Capture one image."),
+                MissionRequirements(1, 1.0, False),
                 candidates_root=Path(temporary_directory),
             )
 

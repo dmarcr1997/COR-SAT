@@ -4,9 +4,10 @@ A generated mission package contains `mission.py` and a controller-created
 `manifest.json`. The generator only returns Python source; it never reads or
 writes project files through model calls.
 
-The controller derives the manifest from a typed supported mission request and
-validates it with `runner/schemas/mission-manifest.schema.json`. A package is
-stored under `agents/candidates/<candidate-name>/` and can be run with:
+The controller extracts a small typed requirement object from the request,
+validates it, derives the manifest deterministically, and validates that
+manifest with `runner/schemas/mission-manifest.schema.json`. A package is stored
+under `agents/candidates/<candidate-name>/` and can be run with:
 
 ```text
 python -m runner.cli start <candidate-name> --candidate

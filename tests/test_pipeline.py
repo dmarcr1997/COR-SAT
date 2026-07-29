@@ -5,12 +5,12 @@ from pathlib import Path
 from agents.evaluator import EvaluationResult, EvaluationRun, empty_record
 from agents.packager import create_mission_package
 from agents.pipeline import CandidateSource, run_mission_pipeline, select_candidate
-from agents.requirements import parse_mission_request
+from agents.requirements import MissionRequirements, parse_mission_request, requirements_from_json
 
 
 class CandidateSelectionTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.requirements = parse_mission_request("Capture one image.")
+        self.requirements = MissionRequirements(1, 1.0, False)
 
     def test_first_passing_candidate_wins_without_evaluating_later_source(self) -> None:
         evaluated: list[str] = []
@@ -43,28 +43,24 @@ class CandidateSelectionTests(unittest.TestCase):
         self.assertIsNone(selection.winner)
         self.assertEqual(selection.best_failed.candidate.name, "strong")
 
-    def test_request_matching_is_whitespace_insensitive(self) -> None:
-        requirements = parse_mission_request(" Capture five images at two-second intervals.\n")
-
-        self.assertEqual(requirements.capture_count, 5)
-        self.assertEqual(requirements.interval_seconds, 2.0)
-
-    def test_accepts_equivalent_optical_flow_wording(self) -> None:
+    def test_parser_accepts_general_camera_requirements(self) -> None:
         requirements = parse_mission_request(
-            """Capture 20 images at one-second intervals.
-
-            Split the captured images into groups of five frames.
-
-            For each group, calculate sparse Lucas-Kanade optical flow between consecutive frames
-            and save each visualization as a JPEG inside outputs/optical-flow.
-
-            Produce 16 optical-flow images total.
-
-            Handle shutdown signals and call heartbeat during every capture."""
+            "Capture 7 images every 3 seconds and heartbeat after each capture.",
+            model_call=lambda _: """{
+                "capture_count": 7,
+                "interval_seconds": 3,
+                "heartbeat_each_capture": true,
+                "optical_flow_groups": 0,
+                "optical_flow_outputs": 0,
+                "require_shutdown_handling": false
+            }""",
         )
 
-        self.assertEqual(requirements.capture_count, 20)
-        self.assertTrue(requirements.uses_optical_flow)
+        self.assertEqual(requirements, MissionRequirements(7, 3.0, True))
+
+    def test_parser_rejects_unexpected_model_fields(self) -> None:
+        with self.assertRaisesRegex(ValueError, "unsupported fields"):
+            requirements_from_json('{"capture_count": 1}')
 
     def test_pipeline_generates_evaluates_and_packages(self) -> None:
         source = "from sat_sdk import SatClient\nSatClient().camera.capture()\n"
@@ -74,6 +70,7 @@ class CandidateSelectionTests(unittest.TestCase):
                 "Capture one image.",
                 "candidate-001",
                 generate_source=lambda *_args, **_kwargs: source,
+                requirements_parser=lambda _: self.requirements,
                 package_creator=lambda name, code, requirements: create_mission_package(
                     name,
                     code,
@@ -94,6 +91,7 @@ class CandidateSelectionTests(unittest.TestCase):
                 "Capture one image.",
                 "candidate-001",
                 generate_source=lambda *_args, **_kwargs: "print('missing capture')\n",
+                requirements_parser=lambda _: self.requirements,
                 repair_source=lambda _request, _source, failures, **_kwargs: repair_calls.append(failures) or repaired,
                 package_creator=lambda name, code, requirements: create_mission_package(
                     name,

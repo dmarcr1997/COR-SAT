@@ -10,17 +10,18 @@ request → two independent sources → deterministic evaluation → package
                                       one repair → evaluation
 ```
 
-`python -m agents.cli "Capture one image."` generates two source-only Ollama
-responses concurrently. The evaluator accepts the first source that passes
-syntax, safety, fake-SDK execution, and mission-specific checks. If neither
-passes, it repairs the highest-scoring failure once. `manifest.json` is derived
-by the controller and validated with the existing runner schema.
+`python -m agents.cli "Capture seven images at three-second intervals."` first
+extracts a validated camera-mission requirement object, then generates two
+source-only Ollama responses concurrently. The evaluator accepts the first
+source that passes syntax, safety, fake-SDK execution, and mission-specific
+checks. If neither passes, it repairs the highest-scoring failure once.
+`manifest.json` is derived by the controller and validated with the existing
+runner schema.
 
-The first version explicitly supports these benchmark requests:
-
-- `Capture one image.`
-- `Capture five images at two-second intervals.`
-- The twenty-image optical-flow request in `tests/test_acceptance_missions.py`.
+The natural-language extractor currently supports camera capture timing,
+heartbeats, shutdown handling, and sparse Lucas-Kanade optical-flow requests.
+Communications, IMU, and actuator requirements are rejected until their SDK and
+evaluator support are added.
 
 Generated packages are written to `agents/candidates/<candidate-name>/` and can
 be launched with `python -m runner.cli start <candidate-name> --candidate`.

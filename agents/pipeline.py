@@ -75,9 +75,10 @@ def run_mission_pipeline(
     generate_source: SourceGenerator = generate_mission_source,
     repair_source: Callable[..., str] = repair_mission_source,
     package_creator: Callable[[str, str, MissionRequirements], Path] = create_mission_package,
+    requirements_parser: Callable[[str], MissionRequirements] = parse_mission_request,
 ) -> Path:
     """Generate, evaluate, repair once if needed, and package a mission."""
-    requirements = parse_mission_request(mission_request)
+    requirements = requirements_parser(mission_request)
     selection = generate_and_select(requirements, mission_request, generate_source)
     if selection.winner:
         return package_creator(candidate_name, selection.winner.candidate.source, requirements)
