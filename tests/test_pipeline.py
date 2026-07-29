@@ -49,6 +49,23 @@ class CandidateSelectionTests(unittest.TestCase):
         self.assertEqual(requirements.capture_count, 5)
         self.assertEqual(requirements.interval_seconds, 2.0)
 
+    def test_accepts_equivalent_optical_flow_wording(self) -> None:
+        requirements = parse_mission_request(
+            """Capture 20 images at one-second intervals.
+
+            Split the captured images into groups of five frames.
+
+            For each group, calculate sparse Lucas-Kanade optical flow between consecutive frames
+            and save each visualization as a JPEG inside outputs/optical-flow.
+
+            Produce 16 optical-flow images total.
+
+            Handle shutdown signals and call heartbeat during every capture."""
+        )
+
+        self.assertEqual(requirements.capture_count, 20)
+        self.assertTrue(requirements.uses_optical_flow)
+
     def test_pipeline_generates_evaluates_and_packages(self) -> None:
         source = "from sat_sdk import SatClient\nSatClient().camera.capture()\n"
 
