@@ -2,8 +2,12 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import asdict
+import json
 from pathlib import Path
 from typing import Literal
+
+from agents.requirements import MissionRequirements
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -22,6 +26,7 @@ def generate_mission_source(
     variant: PromptVariant,
     *,
     include_optical_flow: bool = False,
+    requirements: MissionRequirements | None = None,
     model_call: ModelCall | None = None,
 ) -> str:
     """Generate one complete mission.py source file without model tools."""
@@ -30,6 +35,7 @@ def generate_mission_source(
         mission_request,
         variant,
         include_optical_flow=include_optical_flow,
+        requirements=requirements,
     )
     source = (model_call or call_ollama)(prompt)
     print(f"[mission] {variant} generator: source received.", flush=True)
@@ -40,6 +46,7 @@ def generate_two_candidates(
     mission_request: str,
     *,
     include_optical_flow: bool,
+    requirements: MissionRequirements | None = None,
     generate_source: SourceGenerator = generate_mission_source,
     on_candidate: CandidateConsumer | None = None,
 ) -> dict[PromptVariant, str]:
@@ -53,6 +60,7 @@ def generate_two_candidates(
                 mission_request,
                 variant,
                 include_optical_flow=include_optical_flow,
+                requirements=requirements,
             ): variant
             for variant in variants
         }
@@ -73,6 +81,7 @@ def build_generation_prompt(
     variant: PromptVariant,
     *,
     include_optical_flow: bool,
+    requirements: MissionRequirements | None = None,
 ) -> list[dict[str, str]]:
     variant_instruction = {
         "minimal": "Use the smallest clear implementation that meets every requirement.",
@@ -82,17 +91,22 @@ def build_generation_prompt(
     if include_optical_flow:
         references.append(read_reference("optical_flow_example.md"))
 
+    request_parts = [
+        f"Implementation approach: {variant_instruction}",
+        f"Mission request:\n{mission_request}",
+    ]
+    if requirements is not None:
+        request_parts.append(
+            "Validated requirements (authoritative; implement these exact values):\n"
+            + json.dumps(asdict(requirements), indent=2)
+        )
+    request_parts.append("Reference material:\n" + "\n\n".join(references))
+
     return [
         {"role": "system", "content": PROMPTS.joinpath("generate.md").read_text(encoding="utf-8")},
         {
             "role": "user",
-            "content": "\n\n".join(
-                [
-                    f"Implementation approach: {variant_instruction}",
-                    f"Mission request:\n{mission_request}",
-                    "Reference material:\n" + "\n\n".join(references),
-                ]
-            ),
+            "content": "\n\n".join(request_parts),
         },
     ]
 

@@ -7,7 +7,12 @@ from pathlib import Path
 from agents.evaluator import EvaluationResult, EvaluationRun, empty_record
 from agents.packager import create_mission_package
 from agents.pipeline import CandidateSource, run_mission_pipeline, select_candidate
-from agents.requirements import MissionRequirements, parse_mission_request, requirements_from_json
+from agents.requirements import (
+    MissionRequirements,
+    build_requirement_prompt,
+    parse_mission_request,
+    requirements_from_json,
+)
 
 
 class CandidateSelectionTests(unittest.TestCase):
@@ -60,6 +65,14 @@ class CandidateSelectionTests(unittest.TestCase):
 
         self.assertEqual(requirements, MissionRequirements(7, 3.0, True))
 
+    def test_parser_prompt_does_not_invent_omitted_one_capture_options(self) -> None:
+        system_prompt = " ".join(
+            build_requirement_prompt("Capture one image.")[0]["content"].split()
+        )
+
+        self.assertIn("set `interval_seconds` to 1", system_prompt)
+        self.assertIn("to false when they are not mentioned", system_prompt)
+
     def test_parser_rejects_unexpected_model_fields(self) -> None:
         with self.assertRaisesRegex(ValueError, "unsupported fields"):
             requirements_from_json('{"capture_count": 1}')
@@ -87,6 +100,31 @@ class CandidateSelectionTests(unittest.TestCase):
         self.assertIn("Parsing natural-language mission request", stdout.getvalue())
         self.assertIn("candidate passed", stdout.getvalue())
         self.assertIn("Mission package ready", stdout.getvalue())
+
+    def test_pipeline_passes_parsed_requirements_to_generation(self) -> None:
+        source = "from sat_sdk import SatClient\nSatClient().camera.capture()\n"
+        received: list[MissionRequirements] = []
+
+        def generate(_request: str, _variant: str, **kwargs: object) -> str:
+            received.append(kwargs["requirements"])
+            return source
+
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            run_mission_pipeline(
+                "Capture one image.",
+                "candidate-001",
+                generate_source=generate,
+                requirements_parser=lambda _: self.requirements,
+                package_creator=lambda name, code, requirements: create_mission_package(
+                    name,
+                    code,
+                    requirements,
+                    candidates_root=Path(temporary_directory),
+                ),
+            )
+
+        self.assertGreaterEqual(len(received), 1)
+        self.assertTrue(all(item == self.requirements for item in received))
 
     def test_pipeline_repairs_the_best_failed_candidate_once(self) -> None:
         repaired = "from sat_sdk import SatClient\nSatClient().camera.capture()\n"

@@ -104,6 +104,7 @@ def run_mission_pipeline(
         best_failed.candidate.source,
         best_failed.run.result.failures,
         include_optical_flow=requirements.uses_optical_flow,
+        requirements=requirements,
     )
     progress("Repair source received; evaluating")
     repaired_run = evaluate_candidate(repaired_source, requirements)
@@ -147,6 +148,7 @@ def generate_and_select(
     generate_two_candidates(
         mission_request,
         include_optical_flow=requirements.uses_optical_flow,
+        requirements=requirements,
         generate_source=generate_source,
         on_candidate=evaluate_generated,
     )
