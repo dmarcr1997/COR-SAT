@@ -33,7 +33,7 @@ def main() -> int:
             mission_request=args.request,
             candidate_name=args.candidate,
         )
-    except RuntimeError as exc:
+    except (RuntimeError, ValueError) as exc:
         print(
             f"Mission generation failed: {exc}",
             file=sys.stderr,
