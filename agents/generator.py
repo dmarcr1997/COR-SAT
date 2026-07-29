@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Literal
 
@@ -12,6 +13,7 @@ MODEL_NAME = "qwen3:4b-instruct"
 
 PromptVariant = Literal["minimal", "robust"]
 ModelCall = Callable[[list[dict[str, str]]], str]
+SourceGenerator = Callable[..., str]
 
 
 def generate_mission_source(
@@ -29,6 +31,30 @@ def generate_mission_source(
     )
     source = (model_call or call_ollama)(prompt)
     return strip_code_fence(source)
+
+
+def generate_two_candidates(
+    mission_request: str,
+    *,
+    include_optical_flow: bool,
+    generate_source: SourceGenerator = generate_mission_source,
+) -> dict[PromptVariant, str]:
+    """Generate independent minimal and robust candidates concurrently."""
+    variants: tuple[PromptVariant, PromptVariant] = ("minimal", "robust")
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        futures = {
+            executor.submit(
+                generate_source,
+                mission_request,
+                variant,
+                include_optical_flow=include_optical_flow,
+            ): variant
+            for variant in variants
+        }
+        results: dict[PromptVariant, str] = {}
+        for future in as_completed(futures):
+            results[futures[future]] = future.result()
+    return results
 
 
 def build_generation_prompt(

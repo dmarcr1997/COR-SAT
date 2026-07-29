@@ -1,6 +1,11 @@
+import threading
 import unittest
 
-from agents.generator import build_generation_prompt, generate_mission_source
+from agents.generator import (
+    build_generation_prompt,
+    generate_mission_source,
+    generate_two_candidates,
+)
 
 
 class GeneratorTests(unittest.TestCase):
@@ -26,6 +31,22 @@ class GeneratorTests(unittest.TestCase):
 
         self.assertIn("Lucas-Kanade", messages[1]["content"])
         self.assertIn("shutdown handling", messages[1]["content"])
+
+    def test_generates_independent_candidates_concurrently(self) -> None:
+        barrier = threading.Barrier(2)
+
+        def generate(request: str, variant: str, **_: object) -> str:
+            self.assertEqual(request, "Capture one image.")
+            barrier.wait(timeout=1)
+            return f"# {variant}\n"
+
+        candidates = generate_two_candidates(
+            "Capture one image.",
+            include_optical_flow=False,
+            generate_source=generate,
+        )
+
+        self.assertEqual(candidates, {"minimal": "# minimal\n", "robust": "# robust\n"})
 
 
 if __name__ == "__main__":
