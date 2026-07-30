@@ -117,7 +117,15 @@ for group_start in range(0, len(frames), 5):
         current = cv2.imread(group[index + 1])
         previous_points = cv2.goodFeaturesToTrack(previous, maxCorners=100)
         next_points, status, _ = cv2.calcOpticalFlowPyrLK(
-            previous, current, previous_points, None
+            previous,
+            current,
+            previous_points,
+            None,
+            criteria=(
+                cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT,
+                10,
+                0.03,
+            ),
         )
         for previous_point, next_point in zip(
             previous_points[status.flatten() == 1],

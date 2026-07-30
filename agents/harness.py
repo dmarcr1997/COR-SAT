@@ -207,6 +207,8 @@ class _FakePoint:
 def fake_cv2_module(record: _MutableRecord) -> ModuleType:
     module = ModuleType("cv2")
     module.COLOR_BGR2GRAY = 6
+    module.TERM_CRITERIA_COUNT = 1
+    module.TERM_CRITERIA_EPS = 2
     module.imread = lambda _: _FakeFrame()
     module.cvtColor = lambda frame, _: frame
     module.goodFeaturesToTrack = lambda *_args, **_kwargs: _FakeArray([
