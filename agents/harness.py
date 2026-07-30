@@ -94,7 +94,7 @@ class _MutableRecord:
         self.capture_count += 1
         filename = self.mission_directory / f"capture-{self.capture_count:03d}.jpg"
         filename.write_bytes(b"fake-image")
-        return CaptureResponse("captured", str(filename))
+        return CaptureResponse("Image saved", str(filename))
 
     def freeze(self) -> ExecutionRecord:
         output_directory = self.mission_directory / "outputs"
@@ -172,22 +172,65 @@ def fake_signal_module() -> ModuleType:
     return module
 
 
+class _FakeArray:
+    """Small stand-in for the OpenCV arrays used by optical-flow missions."""
+
+    def __init__(self, values: list[object]) -> None:
+        self._values = values
+
+    def __len__(self) -> int:
+        return len(self._values)
+
+    def __iter__(self):
+        return iter(self._values)
+
+    def __getitem__(self, key: object) -> _FakeArray | object:
+        if isinstance(key, int):
+            return self._values[key]
+        return _FakeArray(list(self._values))
+
+    def flatten(self) -> _FakeArray:
+        return self
+
+    def __eq__(self, other: object) -> _FakeArray:
+        return _FakeArray([value == other for value in self._values])
+
+
+class _FakePoint:
+    def __init__(self, x: float, y: float) -> None:
+        self._coordinates = (x, y)
+
+    def ravel(self) -> tuple[float, float]:
+        return self._coordinates
+
+
 def fake_cv2_module(record: _MutableRecord) -> ModuleType:
     module = ModuleType("cv2")
     module.COLOR_BGR2GRAY = 6
     module.imread = lambda _: _FakeFrame()
     module.cvtColor = lambda frame, _: frame
-    module.goodFeaturesToTrack = lambda *_args, **_kwargs: object()
+    module.goodFeaturesToTrack = lambda *_args, **_kwargs: _FakeArray([
+        _FakePoint(10.0, 10.0), _FakePoint(20.0, 20.0),
+    ])
 
-    def calculate_flow(*_: object, **__: object) -> tuple[None, None, None]:
+    def calculate_flow(*_: object, **__: object) -> tuple[_FakeArray, _FakeArray, None]:
         record.optical_flow_count += 1
-        return None, None, None
+        return (
+            _FakeArray([_FakePoint(11.0, 10.0), _FakePoint(21.0, 20.0)]),
+            _FakeArray([1, 1]),
+            None,
+        )
 
     def write_image(filename: str, _: object) -> bool:
-        Path(filename).write_bytes(b"fake-jpeg")
+        output_path = Path(filename)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_bytes(b"fake-jpeg")
         return True
 
-    module.calcOpticalFlowPyrLK, module.imwrite = calculate_flow, write_image
+    module.calcOpticalFlowPyrLK = calculate_flow
+    module.line = lambda image, *_args, **_kwargs: image
+    module.circle = lambda image, *_args, **_kwargs: image
+    module.imwrite = write_image
     return module
 
 
