@@ -179,9 +179,9 @@ if not saved:
     )
 ```
 
-## Processing frames in groups of five
+## Processing frames in groups of $GROUP_SIZE
 
-Twenty captured images create four groups:
+$CAPTURE_COUNT captured images create $GROUP_COUNT groups of $GROUP_SIZE frames.
 
 ```text
 frames 0–4
@@ -190,7 +190,7 @@ frames 10–14
 frames 15–19
 ```
 
-Each group of five contains four consecutive frame pairs:
+Each group contains $PAIR_COUNT consecutive frame pairs:
 
 ```text
 frame 0 → frame 1
@@ -209,11 +209,11 @@ Grouping helper:
 
 ```python
 groups = [
-    captured_frames[index:index + 5]
+    captured_frames[index:index + $GROUP_SIZE]
     for index in range(
         0,
         len(captured_frames),
-        5,
+        $GROUP_SIZE,
     )
 ]
 ```
@@ -242,10 +242,10 @@ for group_index, group in enumerate(groups):
 
 “Optical flow images in groups of five” means:
 
-1. Capture twenty images.
-2. Split them into four groups of five frames.
+1. Capture $CAPTURE_COUNT images.
+2. Split them into $GROUP_COUNT groups of $GROUP_SIZE frames.
 3. Calculate flow between consecutive frames inside each group.
-4. Produce sixteen optical-flow visualizations.
+4. Produce $FLOW_OUTPUT_COUNT optical-flow visualizations.
 
 Do not replace optical flow with simple image grouping.
 

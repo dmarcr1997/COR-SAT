@@ -78,9 +78,10 @@ def build_generation_prompt(
     }[variant]
     references = [read_reference("sdk_contract.md")]
     if include_optical_flow:
-        references.append(read_reference("optical_flow_example.md"))
+        references.append(optical_flow_reference(requirements))
 
     request_parts = [
+        "Reference material:\n" + "\n\n".join(references),
         f"Implementation approach: {variant_instruction}",
         f"Mission request:\n{mission_request}",
     ]
@@ -89,7 +90,7 @@ def build_generation_prompt(
             "Validated requirements (authoritative; implement these exact values):\n"
             + json.dumps(asdict(requirements), indent=2)
         )
-    request_parts.append("Reference material:\n" + "\n\n".join(references))
+        request_parts.append(requirement_checklist(requirements))
 
     return [
         {"role": "system", "content": PROMPTS.joinpath("generate.md").read_text(encoding="utf-8")},
@@ -102,6 +103,44 @@ def build_generation_prompt(
 
 def read_reference(filename: str) -> str:
     return REFERENCES.joinpath(filename).read_text(encoding="utf-8")
+
+
+def optical_flow_reference(requirements: MissionRequirements | None) -> str:
+    if requirements is None or not requirements.uses_optical_flow:
+        group_size, group_count, capture_count, output_count = 5, 4, 20, 16
+    else:
+        group_size = requirements.capture_count // requirements.optical_flow_groups
+        group_count = requirements.optical_flow_groups
+        capture_count = requirements.capture_count
+        output_count = requirements.optical_flow_outputs
+    return (
+        read_reference("optical_flow_example.md")
+        .replace("$GROUP_SIZE", str(group_size))
+        .replace("$GROUP_COUNT", str(group_count))
+        .replace("$CAPTURE_COUNT", str(capture_count))
+        .replace("$FLOW_OUTPUT_COUNT", str(output_count))
+        .replace("$PAIR_COUNT", str(group_size - 1))
+    )
+
+
+def requirement_checklist(requirements: MissionRequirements) -> str:
+    lines = [
+        "Implementation checklist (mandatory; validate this before returning source):",
+        f"- Make exactly {requirements.capture_count} captures.",
+        f"- Call time.sleep({requirements.interval_seconds:g}) exactly {requirements.capture_count - 1} times, never after the final capture.",
+    ]
+    if requirements.heartbeat_each_capture:
+        lines.append("- Call sat.heartbeat() before every capture.")
+    if requirements.uses_optical_flow:
+        group_size = requirements.capture_count // requirements.optical_flow_groups
+        lines.extend([
+            f"- Split frames into {requirements.optical_flow_groups} groups of {group_size}.",
+            f"- Make exactly {requirements.optical_flow_outputs} Lucas-Kanade calls and write exactly that many JPEG files.",
+        ])
+    if requirements.require_shutdown_handling:
+        lines.append("- Register SIGTERM and SIGINT handlers.")
+    lines.append("Do not copy fixed counts from the reference when they differ from this checklist.")
+    return "\n".join(lines)
 
 
 def call_ollama(messages: list[dict[str, str]]) -> str:

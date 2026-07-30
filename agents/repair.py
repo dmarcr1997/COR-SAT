@@ -5,7 +5,14 @@ from dataclasses import asdict
 import json
 from pathlib import Path
 
-from agents.generator import ModelCall, call_ollama, read_reference, strip_code_fence
+from agents.generator import (
+    ModelCall,
+    call_ollama,
+    optical_flow_reference,
+    read_reference,
+    requirement_checklist,
+    strip_code_fence,
+)
 from agents.requirements import MissionRequirements
 
 
@@ -45,9 +52,12 @@ def build_repair_prompt(
 ) -> list[dict[str, str]]:
     references = [read_reference("sdk_contract.md")]
     if include_optical_flow:
-        references.append(read_reference("optical_flow_example.md"))
+        references.append(optical_flow_reference(requirements))
 
-    request_parts = [f"Mission request:\n{mission_request}"]
+    request_parts = [
+        "Reference material:\n" + "\n\n".join(references),
+        f"Mission request:\n{mission_request}",
+    ]
     if requirements is not None:
         request_parts.append(
             "Validated requirements (authoritative; implement these exact values):\n"
@@ -57,9 +67,10 @@ def build_repair_prompt(
         [
             "Evaluator failures:\n" + "\n".join(f"- {failure}" for failure in failures),
             f"Failed mission.py:\n{failed_source}",
-            "Reference material:\n" + "\n\n".join(references),
         ]
     )
+    if requirements is not None:
+        request_parts.append(requirement_checklist(requirements))
 
     return [
         {"role": "system", "content": REPAIR_PROMPT.read_text(encoding="utf-8")},

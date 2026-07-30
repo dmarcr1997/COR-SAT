@@ -35,6 +35,19 @@ class GeneratorTests(unittest.TestCase):
         self.assertIn("Lucas-Kanade", messages[1]["content"])
         self.assertIn("shutdown handling", messages[1]["content"])
 
+    def test_optical_flow_prompt_uses_validated_group_size(self) -> None:
+        messages = build_generation_prompt(
+            "Capture twelve images.",
+            "minimal",
+            include_optical_flow=True,
+            requirements=MissionRequirements(12, 0.5, True, 3, 9, True),
+        )
+
+        content = messages[1]["content"]
+        self.assertIn("groups of 4", content)
+        self.assertIn("exactly 9 Lucas-Kanade calls", content)
+        self.assertNotIn("$GROUP_SIZE", content)
+
     def test_prompt_includes_authoritative_validated_requirements(self) -> None:
         messages = build_generation_prompt(
             "Capture one image.",
@@ -48,6 +61,7 @@ class GeneratorTests(unittest.TestCase):
         self.assertIn('"capture_count": 1', content)
         self.assertIn('"heartbeat_each_capture": false', content)
         self.assertIn('"require_shutdown_handling": false', content)
+        self.assertIn("Implementation checklist", content)
 
     def test_generates_minimal_candidate_before_robust_candidate(self) -> None:
         generated: list[str] = []

@@ -18,6 +18,7 @@ class RepairTests(unittest.TestCase):
         self.assertIn("Validated requirements (authoritative", content)
         self.assertIn('"capture_count": 1', content)
         self.assertIn('"heartbeat_each_capture": false', content)
+        self.assertIn("Implementation checklist", content)
 
     def test_repair_prompt_contains_source_and_concrete_failures(self) -> None:
         messages = build_repair_prompt(
