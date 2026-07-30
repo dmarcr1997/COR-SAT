@@ -4,9 +4,9 @@ import unittest
 import tempfile
 from pathlib import Path
 
-from agents.evaluator import EvaluationResult, EvaluationRun, empty_record
+from agents.evaluator import EvaluationResult, EvaluationRun, ExecutionRecord, empty_record
 from agents.packager import create_mission_package
-from agents.pipeline import CandidateSource, run_mission_pipeline, select_candidate
+from agents.pipeline import CandidateSource, behavior_failures, run_mission_pipeline, select_candidate
 from agents.requirements import (
     MissionRequirements,
     build_requirement_prompt,
@@ -76,6 +76,23 @@ class CandidateSelectionTests(unittest.TestCase):
     def test_parser_rejects_unexpected_model_fields(self) -> None:
         with self.assertRaisesRegex(ValueError, "unsupported fields"):
             requirements_from_json('{"capture_count": 1}')
+
+    def test_accepts_optical_flow_groups_of_four(self) -> None:
+        requirements = MissionRequirements(12, 0.5, True, 3, 9, True)
+        run = EvaluationRun(
+            EvaluationResult(True, 100, []),
+            ExecutionRecord(12, 12, 0, [0.5] * 11, ["outputs/flow.jpg"] * 9, 9),
+        )
+
+        failures = behavior_failures(
+            "for start in range(0, len(frames), 4):\n    pass\n"
+            "cv2.calcOpticalFlowPyrLK(previous, current, points, None)\n"
+            "signal.signal(signal.SIGTERM, handler)\n",
+            run,
+            requirements,
+        )
+
+        self.assertNotIn("Frames were not split into groups of 4", failures)
 
     def test_pipeline_generates_evaluates_and_packages(self) -> None:
         source = "from sat_sdk import SatClient\nSatClient().camera.capture()\n"

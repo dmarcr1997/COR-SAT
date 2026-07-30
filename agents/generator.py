@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict
 import json
 from pathlib import Path
@@ -50,29 +49,19 @@ def generate_two_candidates(
     generate_source: SourceGenerator = generate_mission_source,
     on_candidate: CandidateConsumer | None = None,
 ) -> dict[PromptVariant, str]:
-    """Generate independent minimal and robust candidates concurrently."""
+    """Generate candidates until one is accepted by the evaluator."""
     variants: tuple[PromptVariant, PromptVariant] = ("minimal", "robust")
-    executor = ThreadPoolExecutor(max_workers=2)
-    try:
-        futures = {
-            executor.submit(
-                generate_source,
-                mission_request,
-                variant,
-                include_optical_flow=include_optical_flow,
-                requirements=requirements,
-            ): variant
-            for variant in variants
-        }
-        results: dict[PromptVariant, str] = {}
-        for future in as_completed(futures):
-            variant = futures[future]
-            source = future.result()
-            results[variant] = source
-            if on_candidate and on_candidate(variant, source):
-                break
-    finally:
-        executor.shutdown(wait=False, cancel_futures=True)
+    results: dict[PromptVariant, str] = {}
+    for variant in variants:
+        source = generate_source(
+            mission_request,
+            variant,
+            include_optical_flow=include_optical_flow,
+            requirements=requirements,
+        )
+        results[variant] = source
+        if on_candidate and on_candidate(variant, source):
+            break
     return results
 
 

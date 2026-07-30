@@ -175,8 +175,9 @@ def behavior_failures(
         failures.append("Sparse Lucas-Kanade optical flow was not used")
     if requirements.uses_optical_flow and record.optical_flow_count != requirements.optical_flow_outputs:
         failures.append("Optical flow was not calculated for every frame pair")
-    if requirements.uses_optical_flow and not has_groups_of_five(source):
-        failures.append("Frames were not split into groups of five")
+    group_size = expected_group_size(requirements)
+    if group_size is not None and not has_groups_of_size(source, group_size):
+        failures.append(f"Frames were not split into groups of {group_size}")
     if requirements.require_shutdown_handling and not calls(source, "signal.signal"):
         failures.append("Shutdown signal handling is missing")
     return failures
@@ -187,12 +188,23 @@ def calls(source: str, name: str) -> bool:
     return any(dotted_name(node.func) == name for node in ast.walk(tree) if isinstance(node, ast.Call))
 
 
-def has_groups_of_five(source: str) -> bool:
+def expected_group_size(requirements: MissionRequirements) -> int | None:
+    if not requirements.uses_optical_flow:
+        return None
+    if requirements.capture_count % requirements.optical_flow_groups:
+        return None
+    return requirements.capture_count // requirements.optical_flow_groups
+
+
+def has_groups_of_size(source: str, group_size: int) -> bool:
     tree = ast.parse(source)
     return any(
         isinstance(node, ast.Call)
         and dotted_name(node.func) == "range"
-        and any(isinstance(argument, ast.Constant) and argument.value == 5 for argument in node.args)
+        and any(
+            isinstance(argument, ast.Constant) and argument.value == group_size
+            for argument in node.args
+        )
         for node in ast.walk(tree)
     )
 

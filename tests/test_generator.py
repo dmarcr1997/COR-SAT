@@ -1,4 +1,3 @@
-import threading
 import unittest
 
 from agents.generator import (
@@ -50,12 +49,12 @@ class GeneratorTests(unittest.TestCase):
         self.assertIn('"heartbeat_each_capture": false', content)
         self.assertIn('"require_shutdown_handling": false', content)
 
-    def test_generates_independent_candidates_concurrently(self) -> None:
-        barrier = threading.Barrier(2)
+    def test_generates_minimal_candidate_before_robust_candidate(self) -> None:
+        generated: list[str] = []
 
         def generate(request: str, variant: str, **_: object) -> str:
             self.assertEqual(request, "Capture one image.")
-            barrier.wait(timeout=1)
+            generated.append(variant)
             return f"# {variant}\n"
 
         candidates = generate_two_candidates(
@@ -65,6 +64,7 @@ class GeneratorTests(unittest.TestCase):
         )
 
         self.assertEqual(candidates, {"minimal": "# minimal\n", "robust": "# robust\n"})
+        self.assertEqual(generated, ["minimal", "robust"])
 
     def test_passes_validated_requirements_to_each_generator(self) -> None:
         received: list[MissionRequirements] = []
@@ -95,6 +95,7 @@ class GeneratorTests(unittest.TestCase):
 
         self.assertEqual(len(consumed), 1)
         self.assertEqual(set(candidates), set(consumed))
+        self.assertEqual(consumed, ["minimal"])
 
 
 if __name__ == "__main__":
