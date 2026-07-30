@@ -149,6 +149,8 @@ If `sat.camera.capture()` returns a `CaptureResponse`, the capture succeeded.
 Capture failures raise exceptions. `capture.message` is informational text only;
 do not compare it against fixed strings such as `"success"` or `"captured"`.
 Use `capture.filename` to access the captured image.
+The filename is an absolute path that can be passed directly to `cv2.imread()`;
+do not resolve it relative to the mission directory.
 
 ## Heartbeat and health
 
