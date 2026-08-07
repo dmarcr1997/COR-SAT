@@ -1,0 +1,1152 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#070a08">
+  <title>COR-SAT // Build Log</title>
+  <style>
+    :root {
+      --black: #070a08;
+      --panel: #0d120f;
+      --panel-2: #111a14;
+      --green: #b7ff45;
+      --green-soft: #78b82a;
+      --amber: #ffb000;
+      --red: #ff4f3d;
+      --white: #e9f0e5;
+      --muted: #8b9889;
+      --line: rgba(183, 255, 69, 0.22);
+      --mono: "Cascadia Code", "IBM Plex Mono", "Lucida Console", monospace;
+      --display: "Bahnschrift Condensed", "Arial Narrow", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: var(--black);
+      color: var(--white);
+      font-family: var(--mono);
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      pointer-events: none;
+      background:
+        repeating-linear-gradient(
+          0deg,
+          rgba(255,255,255,0.018) 0,
+          rgba(255,255,255,0.018) 1px,
+          transparent 1px,
+          transparent 4px
+        );
+      mix-blend-mode: screen;
+    }
+
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: 19;
+      pointer-events: none;
+      background: radial-gradient(circle at 50% 40%, transparent 48%, rgba(0,0,0,.58) 130%);
+    }
+
+    button { font: inherit; }
+
+    .deck {
+      width: 100%;
+      height: 100%;
+      position: relative;
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      padding: clamp(22px, 3.2vw, 52px);
+      opacity: 0;
+      visibility: hidden;
+      transform: translateX(4vw);
+      transition: opacity 260ms ease, transform 420ms cubic-bezier(.2,.8,.2,1), visibility 0s 420ms;
+      background:
+        linear-gradient(90deg, transparent 49.9%, rgba(183,255,69,.035) 50%, transparent 50.1%),
+        linear-gradient(0deg, transparent 49.9%, rgba(183,255,69,.025) 50%, transparent 50.1%),
+        var(--black);
+    }
+
+    .slide.active {
+      opacity: 1;
+      visibility: visible;
+      transform: translateX(0);
+      transition-delay: 0s;
+      z-index: 2;
+    }
+
+    .slide.was-active { transform: translateX(-4vw); }
+
+    .slide > * {
+      position: relative;
+      z-index: 2;
+    }
+
+    .eyebrow {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--green);
+      font-size: clamp(10px, 1vw, 14px);
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 34px;
+      height: 2px;
+      background: var(--green);
+      box-shadow: 0 0 12px var(--green);
+    }
+
+    h1, h2, h3, p { margin: 0; }
+
+    h1, h2 {
+      font-family: var(--display);
+      text-transform: uppercase;
+      letter-spacing: -.035em;
+      line-height: .88;
+    }
+
+    h1 { font-size: clamp(64px, 11vw, 170px); }
+    h2 { font-size: clamp(40px, 6.4vw, 104px); }
+
+    .acid { color: var(--green); text-shadow: 0 0 26px rgba(183,255,69,.22); }
+    .amber { color: var(--amber); }
+    .red { color: var(--red); }
+    .muted { color: var(--muted); }
+
+    .footer {
+      display: flex;
+      align-items: end;
+      justify-content: flex-end;
+      gap: 20px;
+      color: var(--muted);
+      font-size: clamp(9px, .85vw, 12px);
+      letter-spacing: .11em;
+      text-transform: uppercase;
+    }
+
+    .footer .index { color: var(--green); }
+    .footer > span:first-child:not(.index) { display: none; }
+
+    .hero {
+      align-self: center;
+      display: grid;
+      gap: clamp(30px, 5vh, 58px);
+    }
+
+    .hero-title {
+      position: relative;
+      width: max-content;
+      padding-bottom: 28px;
+    }
+
+    .hero-title::after {
+      content: "MISSION SYSTEMS LAB";
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      color: var(--amber);
+      font: 600 clamp(10px, 1.15vw, 17px)/1 var(--mono);
+      letter-spacing: .34em;
+    }
+
+    .hero-line {
+      max-width: 920px;
+      color: var(--white);
+      font-family: var(--display);
+      font-size: clamp(20px, 2.8vw, 42px);
+      line-height: 1.04;
+      text-transform: uppercase;
+    }
+
+    .signal {
+      position: absolute;
+      right: clamp(28px, 5vw, 90px);
+      top: 18%;
+      width: clamp(90px, 12vw, 190px);
+      aspect-ratio: 1;
+      border: 1px solid var(--line);
+      border-radius: 50%;
+    }
+
+    .signal::before,
+    .signal::after {
+      content: "";
+      position: absolute;
+      border: 1px solid var(--line);
+      border-radius: 50%;
+      inset: 18%;
+    }
+
+    .signal::after { inset: 37%; background: var(--green); box-shadow: 0 0 24px var(--green); }
+
+    .signal span {
+      position: absolute;
+      inset: -1px;
+      border-top: 2px solid var(--green);
+      border-radius: 50%;
+      animation: orbit 4s linear infinite;
+    }
+
+    @keyframes orbit { to { transform: rotate(360deg); } }
+
+    .split {
+      align-self: center;
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(300px, .95fr);
+      gap: clamp(28px, 5vw, 90px);
+      align-items: center;
+    }
+
+    .stack { display: grid; gap: clamp(18px, 2.5vh, 30px); }
+
+    .build-stack {
+      align-self: center;
+      align-content: center;
+    }
+
+    .build-stack .node {
+      min-height: clamp(140px, 25vh, 210px);
+    }
+
+    .ir-aside {
+      justify-self: end;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 9px 12px;
+      border: 1px solid rgba(255,176,0,.36);
+      border-left: 3px solid var(--amber);
+      background: rgba(255,176,0,.045);
+      text-transform: uppercase;
+    }
+
+    .ir-aside small {
+      color: var(--amber);
+      font-size: 9px;
+      letter-spacing: .12em;
+    }
+
+    .ir-aside strong {
+      font-family: var(--display);
+      font-size: clamp(15px, 1.4vw, 21px);
+    }
+
+    .ir-aside span {
+      color: var(--muted);
+      font-size: 9px;
+    }
+
+    .talking-points {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: grid;
+      gap: clamp(12px, 2vh, 24px);
+      font-family: var(--display);
+      font-size: clamp(18px, 2vw, 30px);
+      line-height: 1.04;
+      text-transform: uppercase;
+    }
+
+    .talking-points li {
+      display: grid;
+      grid-template-columns: 44px 1fr;
+      gap: 14px;
+      align-items: start;
+    }
+
+    .talking-points .num {
+      color: var(--green);
+      font: 500 clamp(11px, 1vw, 14px)/1.5 var(--mono);
+      letter-spacing: .08em;
+    }
+
+    .pipeline {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+      position: relative;
+    }
+
+    .pipeline::before {
+      content: "";
+      position: absolute;
+      left: 6%;
+      right: 6%;
+      top: 38px;
+      border-top: 1px dashed var(--green-soft);
+      z-index: 0;
+    }
+
+    .node {
+      position: relative;
+      z-index: 1;
+      min-height: 150px;
+      padding: 18px 14px;
+      border: 1px solid var(--line);
+      background: rgba(13,18,15,.92);
+      display: grid;
+      align-content: space-between;
+      gap: 26px;
+    }
+
+    .node .port {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 12px var(--green);
+    }
+
+    .node strong {
+      font-family: var(--display);
+      font-size: clamp(18px, 2vw, 30px);
+      text-transform: uppercase;
+    }
+
+    .node small { color: var(--muted); font-size: 10px; text-transform: uppercase; }
+
+    .media-stage {
+      align-self: center;
+      display: grid;
+      grid-template-columns: minmax(220px, .4fr) minmax(0, 1.6fr);
+      gap: clamp(18px, 3vw, 44px);
+      align-items: center;
+    }
+
+    .media-stage.hardware { grid-template-columns: minmax(0, 1.45fr) minmax(220px, .55fr); }
+
+    .video-shell {
+      position: relative;
+      border: 1px solid var(--green-soft);
+      padding: 8px;
+      background: #000;
+      box-shadow: 18px 18px 0 rgba(183,255,69,.07), 0 0 40px rgba(183,255,69,.08);
+    }
+
+    .video-shell::before {
+      content: "LIVE // LOCAL MEDIA";
+      position: absolute;
+      z-index: 3;
+      left: 18px;
+      top: 18px;
+      padding: 5px 8px;
+      background: rgba(7,10,8,.82);
+      color: var(--green);
+      font-size: 9px;
+      letter-spacing: .14em;
+      pointer-events: none;
+    }
+
+    video {
+      display: block;
+      width: 100%;
+      max-height: 68vh;
+      background: #000;
+      object-fit: contain;
+    }
+
+    .demo-label h2 { font-size: clamp(38px, 5.7vw, 92px); }
+    .demo-label p {
+      margin-top: 24px;
+      color: var(--muted);
+      font-size: clamp(12px, 1.25vw, 18px);
+      line-height: 1.55;
+      text-transform: uppercase;
+    }
+
+    .hardware-grid {
+      align-self: center;
+      display: grid;
+      grid-template-columns: minmax(0, 1.12fr) minmax(300px, .88fr);
+      gap: clamp(18px, 2.6vw, 38px);
+      align-items: stretch;
+      min-height: 0;
+    }
+
+    .hardware-panel {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .hardware-side {
+      display: grid;
+      grid-template-rows: minmax(0, 1.45fr) minmax(0, .55fr);
+      gap: 12px;
+      min-height: 0;
+    }
+
+    .support-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      min-height: 0;
+    }
+
+    .hardware-panel.compact { gap: 6px; }
+
+    .panel-kicker {
+      color: var(--green);
+      font-size: clamp(10px, .9vw, 13px);
+      letter-spacing: .13em;
+      text-transform: uppercase;
+    }
+
+    .capture-shell {
+      border: 1px solid var(--amber);
+      padding: 8px;
+      background: #000;
+      min-height: 0;
+      box-shadow: 14px 14px 0 rgba(255,176,0,.06);
+    }
+
+    .capture-shell img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      max-height: 48vh;
+      object-fit: cover;
+      filter: saturate(.7) contrast(1.08);
+    }
+
+    .breadboard-photo-shell {
+      border-color: var(--green-soft);
+      background: #000;
+      box-shadow: 16px 16px 0 rgba(183,255,69,.06);
+    }
+
+    .breadboard-photo-shell img {
+      max-height: 44vh;
+      object-fit: cover;
+      filter: saturate(.9) contrast(1.05);
+    }
+
+    .hardware-panel.compact .capture-shell img { max-height: 20vh; }
+
+    .footprint-shell {
+      display: grid;
+      place-items: center;
+      background: #081521;
+      border-color: var(--green-soft);
+    }
+
+    .footprint-shell img,
+    .hardware-panel.compact .footprint-shell img {
+      width: auto;
+      max-width: 100%;
+      max-height: 31vh;
+      object-fit: contain;
+      filter: none;
+    }
+
+    .support-grid .capture-shell img,
+    .support-grid .schematic-shell img {
+      max-height: 11vh;
+    }
+
+    .schematic-shell {
+      background: #f6f7f2;
+      border-color: #80e0ff;
+    }
+
+    .schematic-shell img,
+    .hardware-panel.compact .schematic-shell img {
+      object-fit: contain;
+      filter: none;
+      max-height: 20vh;
+    }
+
+    .hardware-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+
+    .hardware-tags span {
+      padding: 6px 8px;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 9px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .learning-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .lesson {
+      min-height: clamp(220px, 38vh, 360px);
+      padding: clamp(18px, 2.2vw, 30px);
+      border: 1px solid var(--line);
+      border-top: 4px solid var(--green);
+      background: var(--panel);
+      display: grid;
+      align-content: space-between;
+      gap: 20px;
+    }
+
+    .lesson:nth-child(1) { border-top-color: var(--red); }
+    .lesson:nth-child(2) { border-top-color: var(--amber); }
+
+    .lesson small {
+      color: var(--muted);
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+
+    .lesson strong {
+      font-family: var(--display);
+      font-size: clamp(28px, 3.3vw, 52px);
+      line-height: .9;
+      text-transform: uppercase;
+    }
+
+    .lesson p {
+      color: var(--muted);
+      font-size: clamp(11px, 1vw, 14px);
+      line-height: 1.55;
+      text-transform: uppercase;
+    }
+
+    .photo-card {
+      position: relative;
+      border: 1px solid var(--amber);
+      background: var(--panel);
+      padding: 8px;
+      transform: rotate(1.5deg);
+    }
+
+    .photo-card img {
+      display: block;
+      width: 100%;
+      max-height: 29vh;
+      object-fit: cover;
+      filter: saturate(.65) contrast(1.12) sepia(.12);
+    }
+
+    .photo-card figcaption {
+      padding: 10px 6px 3px;
+      color: var(--amber);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: .12em;
+    }
+
+    .chapter {
+      align-self: center;
+      max-width: 1100px;
+      display: grid;
+      gap: 24px;
+    }
+
+    .chapter .chapter-no {
+      color: var(--green);
+      font: 700 clamp(18px, 2vw, 30px)/1 var(--mono);
+      letter-spacing: .14em;
+    }
+
+    .chapter h2 { font-size: clamp(52px, 8vw, 126px); }
+
+    .chapter p {
+      color: var(--muted);
+      font-family: var(--display);
+      font-size: clamp(20px, 2.6vw, 40px);
+      text-transform: uppercase;
+    }
+
+    .prompt-box {
+      padding: clamp(24px, 4vw, 60px);
+      border: 1px solid var(--line);
+      background: linear-gradient(135deg, rgba(183,255,69,.05), transparent 55%);
+      position: relative;
+    }
+
+    .prompt-box::before {
+      content: ">";
+      position: absolute;
+      left: 18px;
+      top: 16px;
+      color: var(--green);
+    }
+
+    .prompt {
+      color: var(--white);
+      font-size: clamp(18px, 2.5vw, 38px);
+      line-height: 1.15;
+      text-transform: uppercase;
+    }
+
+    .failure-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .failure-strip span,
+    .chip {
+      border: 1px solid rgba(255,79,61,.45);
+      color: var(--red);
+      padding: 8px 10px;
+      font-size: 10px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      background: rgba(255,79,61,.04);
+    }
+
+    .rails {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+
+    .rail {
+      min-height: 210px;
+      border-top: 4px solid var(--green);
+      background: var(--panel);
+      padding: 22px 18px;
+      display: grid;
+      align-content: space-between;
+    }
+
+    .rail:nth-child(2) { border-color: #80e0ff; }
+    .rail:nth-child(3) { border-color: var(--amber); }
+    .rail:nth-child(4) { border-color: #d7a2ff; }
+
+    .rail .rail-no { color: var(--muted); font-size: 11px; }
+    .rail strong {
+      font-family: var(--display);
+      font-size: clamp(20px, 2.2vw, 34px);
+      line-height: .95;
+      text-transform: uppercase;
+    }
+
+    .loop-map {
+      display: grid;
+      grid-template-columns: 1fr 90px 1.1fr 90px .8fr;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .swarm { display: grid; gap: 8px; }
+    .agent-card, .judge, .reward {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      padding: 18px;
+      text-transform: uppercase;
+    }
+
+    .agent-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: var(--white);
+    }
+
+    .agent-card span:last-child { color: var(--green); }
+
+    .judge {
+      min-height: 250px;
+      border-color: var(--amber);
+      display: grid;
+      align-content: center;
+      gap: 20px;
+      text-align: center;
+    }
+
+    .judge strong, .reward strong {
+      font-family: var(--display);
+      font-size: clamp(24px, 3vw, 46px);
+      line-height: .9;
+    }
+
+    .judge small, .reward small { color: var(--muted); line-height: 1.5; }
+    .reward {
+      border-color: var(--green);
+      text-align: center;
+      display: grid;
+      gap: 18px;
+      align-content: center;
+    }
+
+    .arrow {
+      color: var(--green);
+      text-align: center;
+      font-size: clamp(24px, 4vw, 60px);
+    }
+
+    .domain-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .domain {
+      position: relative;
+      min-height: 270px;
+      border: 1px solid var(--line);
+      padding: 22px;
+      overflow: hidden;
+      background: var(--panel);
+    }
+
+    .domain::after {
+      content: attr(data-code);
+      position: absolute;
+      right: -8px;
+      bottom: -22px;
+      color: rgba(183,255,69,.055);
+      font: 900 110px/1 var(--display);
+    }
+
+    .domain strong {
+      position: absolute;
+      left: 22px;
+      bottom: 22px;
+      z-index: 1;
+      font-family: var(--display);
+      font-size: clamp(22px, 2.6vw, 40px);
+      text-transform: uppercase;
+      line-height: .9;
+    }
+
+    .domain .pin {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 22px 0 var(--green), 44px 0 var(--green), 66px 0 var(--green);
+    }
+
+    .roadmap {
+      display: grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap: clamp(30px, 6vw, 100px);
+      align-items: center;
+    }
+
+    .console-chip {
+      aspect-ratio: 1.05;
+      width: min(100%, 72vh);
+      justify-self: start;
+      position: relative;
+      border: 2px solid var(--green);
+      background:
+        linear-gradient(90deg, transparent 48%, rgba(183,255,69,.12) 49%, rgba(183,255,69,.12) 51%, transparent 52%),
+        linear-gradient(0deg, transparent 48%, rgba(183,255,69,.12) 49%, rgba(183,255,69,.12) 51%, transparent 52%),
+        var(--panel);
+      display: grid;
+      place-items: center;
+      box-shadow: inset 0 0 60px rgba(183,255,69,.05), 0 0 50px rgba(183,255,69,.08);
+    }
+
+    .console-chip::before,
+    .console-chip::after {
+      content: "";
+      position: absolute;
+      inset: -14px;
+      background: repeating-linear-gradient(90deg, transparent 0 18px, var(--green-soft) 18px 23px, transparent 23px 34px);
+      height: 8px;
+      top: -10px;
+    }
+
+    .console-chip::after { top: auto; bottom: -10px; }
+
+    .console-chip strong {
+      font-family: var(--display);
+      text-align: center;
+      font-size: clamp(26px, 3.8vw, 58px);
+      line-height: .86;
+      text-transform: uppercase;
+    }
+
+    .target-list { display: grid; gap: 18px; }
+    .target {
+      display: grid;
+      grid-template-columns: 40px 1fr;
+      gap: 12px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--line);
+      font-family: var(--display);
+      font-size: clamp(19px, 2.3vw, 34px);
+      line-height: .95;
+      text-transform: uppercase;
+    }
+    .target span:first-child { color: var(--green); font: 12px/1.5 var(--mono); }
+
+    .manifesto {
+      align-self: center;
+      max-width: 1380px;
+      font-family: var(--display);
+      font-size: clamp(34px, 5.3vw, 80px);
+      line-height: .9;
+      text-transform: uppercase;
+    }
+
+    .manifesto span { color: var(--green); }
+
+    .nav {
+      position: fixed;
+      right: 20px;
+      top: 18px;
+      z-index: 30;
+      display: flex;
+      gap: 8px;
+    }
+
+    .nav button,
+    .notes-toggle {
+      height: 38px;
+      min-width: 42px;
+      border: 1px solid var(--line);
+      background: rgba(7,10,8,.86);
+      color: var(--green);
+      cursor: pointer;
+      text-transform: uppercase;
+      font-size: 11px;
+    }
+
+    .nav button:hover,
+    .nav button:focus-visible,
+    .notes-toggle:hover,
+    .notes-toggle:focus-visible {
+      outline: none;
+      border-color: var(--green);
+      background: var(--green);
+      color: var(--black);
+    }
+
+    .progress {
+      position: fixed;
+      left: 0;
+      bottom: 0;
+      z-index: 31;
+      height: 3px;
+      width: 0;
+      background: var(--green);
+      box-shadow: 0 0 12px var(--green);
+      transition: width 350ms ease;
+    }
+
+    .notes-toggle {
+      position: fixed;
+      right: 164px;
+      top: 18px;
+      z-index: 30;
+      padding: 0 12px;
+    }
+
+    .notes {
+      display: none;
+      position: fixed;
+      z-index: 40;
+      left: 18px;
+      right: 18px;
+      bottom: 64px;
+      max-width: 760px;
+      padding: 18px 20px;
+      border: 1px solid var(--amber);
+      background: rgba(7,10,8,.96);
+      color: var(--white);
+      font-size: 13px;
+      line-height: 1.55;
+      box-shadow: 12px 12px 0 rgba(255,176,0,.08);
+    }
+
+    body.show-notes .slide.active .notes { display: block; }
+
+    .boot {
+      animation: boot 550ms both;
+    }
+
+    @keyframes boot {
+      from { opacity: 0; transform: translateY(12px); filter: blur(5px); }
+      to { opacity: 1; transform: none; filter: none; }
+    }
+
+    @media (max-width: 900px) {
+      .split, .media-stage, .media-stage.hardware, .roadmap, .hardware-grid { grid-template-columns: 1fr; }
+      .pipeline { grid-template-columns: repeat(5, minmax(145px, 1fr)); overflow-x: auto; padding-bottom: 8px; }
+      .rails { grid-template-columns: repeat(2, 1fr); }
+      .loop-map { grid-template-columns: 1fr; }
+      .arrow { transform: rotate(90deg); }
+      .domain-grid { grid-template-columns: 1fr; }
+      .learning-grid { grid-template-columns: 1fr; }
+      .domain { min-height: 130px; }
+      .media-stage .demo-label { order: -1; }
+      .photo-card { display: none; }
+      .hardware-side { grid-template-columns: 1fr; grid-template-rows: 1.4fr .6fr; }
+      .signal { opacity: .35; }
+    }
+
+    @media (max-height: 700px) {
+      .slide { padding-top: 24px; padding-bottom: 24px; }
+      h1 { font-size: clamp(58px, 18vh, 125px); }
+      h2 { font-size: clamp(36px, 11vh, 72px); }
+      .demo-label h2 { font-size: clamp(34px, 9vh, 60px); }
+      .chapter h2 { font-size: clamp(44px, 13vh, 84px); }
+      .node { min-height: 112px; }
+      .rail { min-height: 150px; }
+      .domain { min-height: 190px; }
+      .lesson { min-height: 190px; }
+      video, .capture-shell img { max-height: 42vh; }
+      .footer { opacity: .7; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="deck" aria-live="polite">
+    <section class="slide active" data-label="Boot">
+      <header class="eyebrow">Build log // 2026</header>
+      <div class="hero boot">
+        <div class="hero-title"><h1>COR<span class="acid">//</span>SAT</h1></div>
+        <p class="hero-line">From loose prompts to tested mission systems</p>
+      </div>
+      <div class="signal" aria-hidden="true"><span></span></div>
+      <footer class="footer"><span>Raspberry Pi payload stack</span><span class="index">00 / 06</span></footer>
+      <aside class="notes">Today I want to show the system, the failure path that shaped it, and why the project pulled me closer to hardware.</aside>
+    </section>
+
+    <section class="slide" data-label="What I built">
+      <header class="eyebrow">01 // What I built</header>
+      <div class="stack build-stack">
+        <h2>A mission <span class="acid">factory</span></h2>
+        <div class="pipeline" aria-label="Mission generation pipeline">
+          <div class="node"><span class="port"></span><strong>Describe</strong><small>Natural language</small></div>
+          <div class="node"><span class="port"></span><strong>Generate</strong><small>Two strategies</small></div>
+          <div class="node"><span class="port"></span><strong>Evaluate</strong><small>Syntax + behavior</small></div>
+          <div class="node"><span class="port"></span><strong>Package</strong><small>Runner manifest</small></div>
+          <div class="node"><span class="port"></span><strong>Execute</strong><small>Pi + camera HAL</small></div>
+        </div>
+        <aside class="ir-aside" aria-label="IR communications prototype side project">
+          <small>Hardware path</small><strong>IR comms prototype</strong><span>Breadboard → KiCad</span>
+        </aside>
+      </div>
+      <footer class="footer"><span>Prompt → verified package → physical payload</span><span class="index">01 / 06</span></footer>
+      <aside class="notes">The input is a mission request. The output is a validated package that the runner can supervise. The important part is the middle: generated code must prove its behavior before it reaches the payload.</aside>
+    </section>
+
+    <section class="slide" data-label="Software demo">
+      <header class="eyebrow">02 // Demo: software</header>
+      <div class="media-stage">
+        <div class="demo-label">
+          <h2>Say it.<br><span class="acid">Build it.</span></h2>
+          <p>Request → requirements<br>candidate → evaluator<br>mission package</p>
+        </div>
+        <div class="video-shell">
+          <video controls preload="metadata" poster="assets/software-poster.jpg">
+            <source src="assets/software-demo.mp4" type="video/mp4">
+            Your browser cannot play the software demo.
+          </video>
+        </div>
+      </div>
+      <footer class="footer"><span>Recorded on the Raspberry Pi</span><span class="index">02 / 06</span></footer>
+      <aside class="notes">Watch the pipeline turn one sentence into exact requirements, generate candidates, evaluate behavior, and create a mission package.</aside>
+    </section>
+
+    <section class="slide" data-label="Hardware demo">
+      <header class="eyebrow">03 // Demo: hardware</header>
+      <div class="hardware-grid">
+        <div class="hardware-panel">
+          <span class="panel-kicker">A // IR comms prototype</span>
+          <div class="capture-shell breadboard-photo-shell">
+            <img src="assets/breadboard-circuit-horizontal.png" alt="Horizontal breadboard prototype for the infrared communications circuit">
+          </div>
+          <div class="hardware-tags"><span>Breadboard</span><span>38 kHz carrier</span><span>TX / RX</span></div>
+        </div>
+        <div class="hardware-side">
+          <div class="hardware-panel compact">
+            <span class="panel-kicker">B // KiCad PCB layout</span>
+            <div class="capture-shell footprint-shell">
+              <img src="assets/sat-ir-link-footprint.png" alt="KiCad PCB footprint and routing for the dual-channel infrared communications board">
+            </div>
+          </div>
+          <div class="support-grid">
+            <div class="hardware-panel compact">
+              <span class="panel-kicker amber">C // Camera</span>
+              <div class="capture-shell">
+                <img src="assets/first-light.jpg" alt="Image captured by the COR-SAT camera during development">
+              </div>
+            </div>
+            <div class="hardware-panel compact">
+              <span class="panel-kicker">D // Schematic</span>
+              <div class="capture-shell schematic-shell">
+                <img src="assets/sat-ir-link-schematic.png" alt="KiCad schematic for the COR-SAT infrared communications link">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <footer class="footer"><span>Light as data // light as sensor input</span><span class="index">03 / 06</span></footer>
+      <aside class="notes">The breadboard prototype proves the IR transmit and receive path. The larger KiCad view shows the dual-channel board layout and routing. The smaller panels connect that hardware work back to the camera payload and circuit schematic.</aside>
+    </section>
+
+    <section class="slide" data-label="What I learned">
+      <header class="eyebrow">04 // What I learned</header>
+      <div class="stack">
+        <h2>Failure shaped the <span class="acid">system.</span></h2>
+        <div class="learning-grid">
+          <article class="lesson">
+            <small>01 // Prompt</small>
+            <strong>Loose guardrails</strong>
+            <p>Fast output. Hidden assumptions. No proof.</p>
+          </article>
+          <article class="lesson">
+            <small>02 // Constrain</small>
+            <strong>Executable contracts</strong>
+            <p>Typed requirements. Limited SDK. Behavior checks.</p>
+          </article>
+          <article class="lesson">
+            <small>03 // Select</small>
+            <strong>RL-inspired search</strong>
+            <p>Parallel generators. Test model. Reward what survives.</p>
+          </article>
+        </div>
+      </div>
+      <footer class="footer"><span>Fluency is not reliability // evidence over confidence</span><span class="index">04 / 06</span></footer>
+      <aside class="notes">I started with loose prompting and got plausible but unreliable code. Guardrails turned requirements into executable contracts. The next direction is RL-inspired search: several generators, a test model that invents hard unit tests, and selection based on measured build and behavior results.</aside>
+    </section>
+
+    <section class="slide" data-label="Mentor lesson">
+      <header class="eyebrow">05 // Mentor takeaway</header>
+      <div class="stack">
+        <h2>Move closer to the <span class="amber">machine.</span></h2>
+        <div class="domain-grid">
+          <div class="domain" data-code="AUTO"><span class="pin"></span><strong>Embedded<br>autonomy</strong></div>
+          <div class="domain" data-code="HW"><span class="pin"></span><strong>Hardware</strong></div>
+          <div class="domain" data-code="ROBO"><span class="pin"></span><strong>Robotics<br>systems</strong></div>
+        </div>
+      </div>
+      <footer class="footer"><span>Less abstraction // more constraints // deeper understanding</span><span class="index">05 / 06</span></footer>
+      <aside class="notes">My mentor helped me name the next move. I want to explore embedded autonomy, hardware, and robotics systems where software decisions meet physical constraints.</aside>
+    </section>
+
+    <section class="slide" data-label="Career and hardware exploration">
+      <header class="eyebrow">06 // Career exploration</header>
+      <div class="chapter">
+        <h2>Where hardware takes me <span class="acid">next.</span></h2>
+        <p>Career / hardware exploration</p>
+      </div>
+      <footer class="footer"><span>COR-SAT // Questions?</span><span class="index">06 / 06</span></footer>
+      <aside class="notes">My next step is exploring where a deeper focus on hardware can take my career.</aside>
+    </section>
+  </main>
+
+  <button class="notes-toggle" type="button" aria-pressed="false" title="Toggle speaker notes (N)">N // notes</button>
+  <nav class="nav" aria-label="Slide controls">
+    <button type="button" data-action="prev" aria-label="Previous slide">←</button>
+    <button type="button" data-action="fullscreen" aria-label="Enter fullscreen">⛶</button>
+    <button type="button" data-action="next" aria-label="Next slide">→</button>
+  </nav>
+  <div class="progress" aria-hidden="true"></div>
+
+  <script>
+    (() => {
+      const slides = [...document.querySelectorAll('.slide')];
+      const progress = document.querySelector('.progress');
+      const notesButton = document.querySelector('.notes-toggle');
+      let current = 0;
+      let wheelLocked = false;
+      let touchStartX = 0;
+
+      function show(index) {
+        const next = Math.max(0, Math.min(slides.length - 1, index));
+        if (next === current && slides[current].classList.contains('active')) return;
+
+        slides.forEach((slide, i) => {
+          slide.classList.toggle('active', i === next);
+          slide.classList.toggle('was-active', i < next);
+          if (i !== next) slide.querySelectorAll('video').forEach(video => video.pause());
+        });
+
+        current = next;
+        progress.style.width = `${((current + 1) / slides.length) * 100}%`;
+        document.title = `COR-SAT // ${slides[current].dataset.label}`;
+        history.replaceState(null, '', `#${current + 1}`);
+      }
+
+      function step(delta) { show(current + delta); }
+
+      document.addEventListener('keydown', event => {
+        if (event.target.matches('video')) return;
+        if (['ArrowRight', 'PageDown', ' '].includes(event.key)) {
+          event.preventDefault();
+          step(1);
+        }
+        if (['ArrowLeft', 'PageUp'].includes(event.key)) {
+          event.preventDefault();
+          step(-1);
+        }
+        if (event.key === 'Home') show(0);
+        if (event.key === 'End') show(slides.length - 1);
+        if (event.key.toLowerCase() === 'n') notesButton.click();
+        if (event.key.toLowerCase() === 'f') document.querySelector('[data-action="fullscreen"]').click();
+      });
+
+      document.querySelector('[data-action="prev"]').addEventListener('click', () => step(-1));
+      document.querySelector('[data-action="next"]').addEventListener('click', () => step(1));
+      document.querySelector('[data-action="fullscreen"]').addEventListener('click', () => {
+        if (!document.fullscreenElement) document.documentElement.requestFullscreen?.();
+        else document.exitFullscreen?.();
+      });
+
+      notesButton.addEventListener('click', () => {
+        const visible = document.body.classList.toggle('show-notes');
+        notesButton.setAttribute('aria-pressed', String(visible));
+      });
+
+      document.addEventListener('wheel', event => {
+        if (wheelLocked || Math.abs(event.deltaY) < 18) return;
+        wheelLocked = true;
+        step(event.deltaY > 0 ? 1 : -1);
+        window.setTimeout(() => { wheelLocked = false; }, 500);
+      }, { passive: true });
+
+      document.addEventListener('touchstart', event => {
+        touchStartX = event.changedTouches[0].screenX;
+      }, { passive: true });
+
+      document.addEventListener('touchend', event => {
+        const distance = touchStartX - event.changedTouches[0].screenX;
+        if (Math.abs(distance) > 50) step(distance > 0 ? 1 : -1);
+      }, { passive: true });
+
+      const initial = Number(location.hash.slice(1)) - 1;
+      current = Number.isInteger(initial) && initial >= 0 ? initial : 0;
+      slides.forEach((slide, i) => {
+        slide.classList.toggle('active', i === current);
+        slide.classList.toggle('was-active', i < current);
+      });
+      progress.style.width = `${((current + 1) / slides.length) * 100}%`;
+    })();
+  </script>
+</body>
+</html>
